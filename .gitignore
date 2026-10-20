@@ -1,0 +1,19 @@
+# Java and build tools
+*.class
+*.log
+target/
+build/
+.gradle/
+
+# Node.js
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+
+# IDE and OS files
+.idea/
+*.iml
+.vscode/
+.DS_Store

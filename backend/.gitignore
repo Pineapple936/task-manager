@@ -1,0 +1,17 @@
+# Maven and Gradle build artifacts
+target/
+build/
+.gradle/
+
+# JVM artifacts and logs
+*.class
+*.log
+hs_err_pid*
+
+# Local backend configuration
+application-local.yml
+application-local.yaml
+application-local.properties
+.env
+.env.*
+!.env.example
