@@ -8,7 +8,7 @@ import com.team.task_manager.repository.task.entity.TaskDto;
 public interface TaskRepository {
     List<TaskDto> findAllByUserId(Long userId);
 
-    Optional<TaskDto> findById(Long taskId);
+    Optional<TaskDto> findByIdAndUserId(Long taskId, Long userId);
 
     TaskDto create(TaskDto task);
 

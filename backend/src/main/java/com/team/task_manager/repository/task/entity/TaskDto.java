@@ -1,6 +1,6 @@
 package com.team.task_manager.repository.task.entity;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
 
@@ -11,8 +11,8 @@ public record TaskDto (
         String description,
         Integer priority,
         TaskStatus status,
-        LocalDateTime deadline,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        OffsetDateTime deadline,
+        OffsetDateTime createdAt,
+        OffsetDateTime updatedAt
 ) {
 }
