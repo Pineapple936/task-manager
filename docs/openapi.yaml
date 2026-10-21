@@ -1,0 +1,274 @@
+openapi: 3.0.3
+info:
+  title: Task Manager API
+  version: 0.1.0
+  description: |
+    Базовый REST API менеджера задач.
+    Теги, участники задач и зависимости пока не входят в API-контракт.
+servers:
+  - url: /
+paths:
+  /tasks:
+    get:
+      summary: Получить список задач
+      operationId: getTasks
+      parameters:
+        - $ref: '#/components/parameters/StatusFilter'
+        - $ref: '#/components/parameters/PriorityFilter'
+        - $ref: '#/components/parameters/SearchFilter'
+        - $ref: '#/components/parameters/SortBy'
+        - $ref: '#/components/parameters/SortDirection'
+      responses:
+        '200':
+          description: Список задач
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskListItem'
+    post:
+      summary: Создать задачу
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: Задача создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetails'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+  /tasks/{taskId}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      summary: Получить задачу по идентификатору
+      operationId: getTaskById
+      responses:
+        '200':
+          description: Задача
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetails'
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+    patch:
+      summary: Частично изменить задачу
+      description: Передаются только поля, которые нужно изменить.
+      operationId: updateTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        '200':
+          description: Обновлённая задача
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetails'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+    delete:
+      summary: Удалить задачу
+      operationId: deleteTask
+      responses:
+        '204':
+          description: Задача удалена
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+components:
+  parameters:
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      description: Идентификатор задачи
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    StatusFilter:
+      name: status
+      in: query
+      required: false
+      description: Фильтр по статусу задачи
+      schema:
+        $ref: '#/components/schemas/TaskStatus'
+    PriorityFilter:
+      name: priority
+      in: query
+      required: false
+      description: Фильтр по приоритету
+      schema:
+        type: integer
+    SearchFilter:
+      name: search
+      in: query
+      required: false
+      description: Поиск по названию задачи
+      schema:
+        type: string
+        minLength: 1
+    SortBy:
+      name: sortBy
+      in: query
+      required: false
+      description: Поле сортировки
+      schema:
+        type: string
+        enum: [priority, deadline, name]
+        default: priority
+    SortDirection:
+      name: direction
+      in: query
+      required: false
+      description: Направление сортировки
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
+  schemas:
+    TaskStatus:
+      type: string
+      description: |
+        В API хранятся технические английские значения.
+        Пользовательский интерфейс переводит их на русский.
+      enum: [created, in_progress, completed]
+    TaskListItem:
+      type: object
+      description: Компактная задача для отрисовки списка без текста заметки.
+      required:
+        - id
+        - name
+        - priority
+        - status
+        - deadline
+        - createdAt
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 42
+        name:
+          type: string
+          maxLength: 255
+          example: Подготовить отчёт
+        priority:
+          type: integer
+          description: Числовой приоритет задачи
+          example: 5
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        deadline:
+          type: string
+          nullable: true
+          format: date-time
+          example: '2026-11-15T18:00:00Z'
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-10-21T12:00:00Z'
+    TaskDetails:
+      description: Полная задача с текстом заметки.
+      allOf:
+        - $ref: '#/components/schemas/TaskListItem'
+        - type: object
+          required: [description]
+          properties:
+            description:
+              type: string
+              description: Полный текст заметки или описание задачи
+              example: Собрать результаты тестирования и оформить их в документе.
+    CreateTaskRequest:
+      type: object
+      additionalProperties: false
+      required: [name, priority]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Подготовить отчёт
+        description:
+          type: string
+          default: ''
+          description: Полный текст заметки или описание задачи
+          example: Собрать результаты тестирования и оформить их в документе.
+        priority:
+          type: integer
+          example: 5
+        deadline:
+          type: string
+          nullable: true
+          format: date-time
+          example: '2026-11-15T18:00:00Z'
+    UpdateTaskRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Подготовить итоговый отчёт
+        description:
+          type: string
+          description: Полный текст заметки или описание задачи
+          example: Добавить в отчёт результаты нагрузочных тестов.
+        priority:
+          type: integer
+          example: 4
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        deadline:
+          type: string
+          nullable: true
+          format: date-time
+          description: '`null` удаляет ранее установленный дедлайн.'
+          example: '2026-11-20T18:00:00Z'
+    ErrorResponse:
+      type: object
+      required: [status, error, message]
+      properties:
+        status:
+          type: integer
+          example: 400
+        error:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          example: Переданы некорректные данные
+        fieldErrors:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            name: Название не должно быть пустым
+  responses:
+    ValidationError:
+      description: Некорректные входные данные
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    TaskNotFound:
+      description: Задача не найдена
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

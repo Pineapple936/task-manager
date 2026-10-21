@@ -1,0 +1,75 @@
+Enum task_status {
+  planned
+  started
+  completed
+}
+
+Enum task_member_role {
+  owner
+  editor
+  viewer
+}
+
+Table users {
+  id integer [pk, increment]
+  username varchar(50) [not null, unique]
+  password_hash varchar(255) [not null]
+  created_at timestamp [not null, default: `now()`]
+}
+
+Table tasks {
+  id integer [pk, increment]
+  created_by_user_id integer [not null, note: 'Автор задачи']
+  name varchar(255) [not null]
+  description text [not null, default: '']
+  priority integer [not null, note: 'Например, от 1 до 5']
+  status task_status [not null, default: 'created']
+  deadline timestamp
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+}
+
+Table task_members {
+  task_id integer [not null]
+  user_id integer [not null]
+  role task_member_role [not null, default: 'editor']
+  added_at timestamp [not null, default: `now()`]
+
+  Indexes {
+    (task_id, user_id) [pk]
+  }
+}
+
+Table tags {
+  id integer [pk, increment]
+  name varchar(50) [not null, unique]
+}
+
+Table task_tags {
+  task_id integer [not null]
+  tag_id integer [not null]
+
+  Indexes {
+    (task_id, tag_id) [pk]
+  }
+}
+
+Table task_dependencies {
+  task_id integer [not null, note: 'Задача, которая зависит от другой']
+  depends_on_task_id integer [not null, note: 'Задача, которую нужно выполнить раньше']
+
+  Indexes {
+    (task_id, depends_on_task_id) [pk]
+  }
+}
+
+Ref: tasks.created_by_user_id > users.id [delete: restrict]
+
+Ref: task_members.task_id > tasks.id [delete: cascade]
+Ref: task_members.user_id > users.id [delete: restrict]
+
+Ref: task_tags.task_id > tasks.id [delete: cascade]
+Ref: task_tags.tag_id > tags.id [delete: cascade]
+
+Ref: task_dependencies.task_id > tasks.id [delete: restrict]
+Ref: task_dependencies.depends_on_task_id > tasks.id [delete: restrict]
