@@ -3,7 +3,6 @@ package com.team.task_manager.repository.task;
 import java.util.List;
 import java.util.Optional;
 
-import com.team.task_manager.repository.task.exception.TaskCreationException;
 import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.jooq.generated.tables.records.TasksRecord;
 import com.team.task_manager.repository.task.entity.TaskDto;
@@ -46,7 +45,7 @@ public class JooqTaskRepository implements TaskRepository {
 
     @Override
     public TaskDto create(TaskDto task) {
-        return dsl.insertInto(TASKS)
+        TasksRecord createdTask = dsl.insertInto(TASKS)
                 .set(TASKS.CREATED_BY_USER_ID, task.createdByUserId())
                 .set(TASKS.NAME, task.name())
                 .set(TASKS.DESCRIPTION, task.description())
@@ -54,9 +53,9 @@ public class JooqTaskRepository implements TaskRepository {
                 .set(TASKS.STATUS, task.status())
                 .set(TASKS.DEADLINE, task.deadline())
                 .returning()
-                .fetchOptional()
-                .map(JooqTaskRepository::toDto)
-                .orElseThrow(TaskCreationException::new);
+                .fetchSingle();
+
+        return toDto(createdTask);
     }
 
     @Override
