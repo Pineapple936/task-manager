@@ -86,6 +86,46 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
 			<plugin>
+				<groupId>org.jooq</groupId>
+				<artifactId>jooq-codegen-maven</artifactId>
+				<version>${jooq.version}</version>
+				<dependencies>
+					<dependency>
+						<groupId>org.postgresql</groupId>
+						<artifactId>postgresql</artifactId>
+						<version>${postgresql.version}</version>
+					</dependency>
+				</dependencies>
+				<executions>
+					<execution>
+						<id>jooq-codegen</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<jdbc>
+						<driver>org.postgresql.Driver</driver>
+						<url>jdbc:postgresql://localhost:5432/task_manager</url>
+						<user>task_manager</user>
+						<password>task_manager</password>
+					</jdbc>
+					<generator>
+						<name>org.jooq.codegen.DefaultGenerator</name>
+						<database>
+							<name>org.jooq.meta.postgres.PostgresDatabase</name>
+							<inputSchema>public</inputSchema>
+						</database>
+						<target>
+							<packageName>com.team.task_manager.jooq.generated</packageName>
+							<directory>${project.build.directory}/generated-sources/jooq</directory>
+						</target>
+					</generator>
+				</configuration>
+			</plugin>
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<executions>
