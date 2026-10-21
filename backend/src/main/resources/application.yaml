@@ -1,3 +1,13 @@
 spring:
   application:
     name: task-manager
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:task_manager}
+    username: ${DB_USERNAME:task_manager}
+    password: ${DB_PASSWORD:task_manager}
+    driver-class-name: org.postgresql.Driver
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  jooq:
+    sql-dialect: POSTGRES

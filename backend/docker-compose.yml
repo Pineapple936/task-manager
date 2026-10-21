@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: task-manager-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-task_manager}
+      POSTGRES_USER: ${DB_USERNAME:-task_manager}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-task_manager}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
