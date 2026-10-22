@@ -3,6 +3,8 @@ package com.team.task_manager.controller.error;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
+import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
 import com.team.task_manager.controller.error.entity.response.ErrorResponse;
 import com.team.task_manager.controller.error.entity.response.ValidationErrorResponse;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -40,6 +42,26 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT.value(),
                 "DATA_INTEGRITY_VIOLATION",
                 "Невозможно выполнить действие"
+        );
+    }
+
+    @ExceptionHandler(TaskNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleTaskNotFound(TaskNotFoundException exception) {
+        return new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "TASK_NOT_FOUND",
+                "Задача не найдена"
+        );
+    }
+
+    @ExceptionHandler(TaskAccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse handleTaskAccessDenied(TaskAccessDeniedException exception) {
+        return new ErrorResponse(
+                HttpStatus.FORBIDDEN.value(),
+                "TASK_ACCESS_DENIED",
+                "Недостаточно прав для выполнения действия"
         );
     }
 

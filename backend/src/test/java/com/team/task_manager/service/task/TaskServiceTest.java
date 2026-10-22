@@ -1,0 +1,191 @@
+package com.team.task_manager.service.task;
+
+import java.util.List;
+import java.util.Optional;
+
+import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
+import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
+import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
+import com.team.task_manager.repository.task.TaskRepository;
+import com.team.task_manager.repository.task.entity.TaskDto;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class TaskServiceTest {
+    private static final Long USER_ID = 10L;
+    private static final Long TASK_ID = 20L;
+
+    @Test
+    void createsTaskForUserAndAddsOwnerMembership() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        TaskDto createdTask = task(TASK_ID, USER_ID);
+        repository.createdTask = createdTask;
+        TaskService service = new TaskService(repository);
+
+        TaskDto result = service.create(task(null, 999L), USER_ID);
+
+        assertSame(createdTask, result);
+        assertNull(repository.taskToCreate.id());
+        assertEquals(USER_ID, repository.taskToCreate.createdByUserId());
+        assertEquals(TASK_ID, repository.ownerTaskId);
+        assertEquals(USER_ID, repository.ownerUserId);
+    }
+
+    @Test
+    void returnsTasksAvailableToUser() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        List<TaskDto> tasks = List.of(task(TASK_ID, USER_ID));
+        repository.tasks = tasks;
+        TaskService service = new TaskService(repository);
+
+        assertSame(tasks, service.getAll(USER_ID));
+    }
+
+    @Test
+    void returnsTaskAvailableToUser() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        TaskDto task = task(TASK_ID, USER_ID);
+        repository.task = Optional.of(task);
+        repository.memberRole = Optional.of(TaskMemberRole.viewer);
+        TaskService service = new TaskService(repository);
+
+        assertSame(task, service.findById(TASK_ID, USER_ID));
+    }
+
+    @Test
+    void throwsWhenTaskIsMissing() {
+        TaskService service = new TaskService(new RecordingTaskRepository());
+
+        assertThrows(TaskNotFoundException.class, () -> service.findById(TASK_ID, USER_ID));
+    }
+
+    @Test
+    void throwsWhenTaskViewIsNotAllowed() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        TaskService service = new TaskService(repository);
+
+        assertThrows(TaskAccessDeniedException.class, () -> service.findById(TASK_ID, USER_ID));
+    }
+
+    @Test
+    void throwsWhenUpdateIsNotAllowed() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRole = Optional.of(TaskMemberRole.viewer);
+        TaskService service = new TaskService(repository);
+
+        assertThrows(TaskAccessDeniedException.class, () -> service.update(task(TASK_ID, USER_ID), USER_ID));
+    }
+
+    @Test
+    void throwsWhenUpdatedTaskIsMissing() {
+        TaskService service = new TaskService(new RecordingTaskRepository());
+
+        assertThrows(TaskNotFoundException.class, () -> service.update(task(TASK_ID, USER_ID), USER_ID));
+    }
+
+    @Test
+    void updatesTaskWhenUserHasAccess() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        TaskDto task = task(TASK_ID, USER_ID);
+        repository.task = Optional.of(task);
+        repository.memberRole = Optional.of(TaskMemberRole.editor);
+        repository.updatedTask = Optional.of(task);
+        TaskService service = new TaskService(repository);
+
+        assertSame(task, service.update(task, USER_ID));
+        assertSame(task, repository.taskToUpdate);
+    }
+
+    @Test
+    void throwsWhenDeleteIsNotAllowed() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRole = Optional.of(TaskMemberRole.editor);
+        TaskService service = new TaskService(repository);
+
+        assertThrows(TaskAccessDeniedException.class, () -> service.delete(TASK_ID, USER_ID));
+    }
+
+    @Test
+    void throwsWhenDeletedTaskIsMissing() {
+        TaskService service = new TaskService(new RecordingTaskRepository());
+
+        assertThrows(TaskNotFoundException.class, () -> service.delete(TASK_ID, USER_ID));
+    }
+
+    @Test
+    void deletesTaskWhenUserHasAccess() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRole = Optional.of(TaskMemberRole.owner);
+        repository.deleted = true;
+        TaskService service = new TaskService(repository);
+
+        service.delete(TASK_ID, USER_ID);
+
+        assertEquals(TASK_ID, repository.deletedTaskId);
+    }
+
+    private static TaskDto task(Long id, Long createdByUserId) {
+        return new TaskDto(id, createdByUserId, "Task", "Description", 1, null, null, null, null);
+    }
+
+    private static final class RecordingTaskRepository implements TaskRepository {
+        private List<TaskDto> tasks = List.of();
+        private Optional<TaskDto> task = Optional.empty();
+        private Optional<TaskMemberRole> memberRole = Optional.empty();
+        private TaskDto createdTask;
+        private Optional<TaskDto> updatedTask = Optional.empty();
+        private boolean deleted;
+        private TaskDto taskToCreate;
+        private TaskDto taskToUpdate;
+        private Long ownerTaskId;
+        private Long ownerUserId;
+        private Long deletedTaskId;
+
+        @Override
+        public List<TaskDto> findAllByUserId(Long userId) {
+            return tasks;
+        }
+
+        @Override
+        public Optional<TaskDto> findById(Long taskId) {
+            return task;
+        }
+
+        @Override
+        public Optional<TaskMemberRole> findMemberRole(Long taskId, Long userId) {
+            return memberRole;
+        }
+
+        @Override
+        public TaskDto create(TaskDto task) {
+            taskToCreate = task;
+            return createdTask;
+        }
+
+        @Override
+        public void addOwner(Long taskId, Long userId) {
+            ownerTaskId = taskId;
+            ownerUserId = userId;
+        }
+
+        @Override
+        public Optional<TaskDto> update(TaskDto task) {
+            taskToUpdate = task;
+            return updatedTask;
+        }
+
+        @Override
+        public boolean deleteById(Long taskId) {
+            deletedTaskId = taskId;
+            return deleted;
+        }
+    }
+}

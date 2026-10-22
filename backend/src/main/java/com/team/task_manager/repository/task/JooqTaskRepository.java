@@ -13,7 +13,6 @@ import org.springframework.stereotype.Repository;
 import static com.team.task_manager.jooq.generated.Tables.TASKS;
 import static com.team.task_manager.jooq.generated.Tables.TASK_MEMBERS;
 import static org.jooq.impl.DSL.currentOffsetDateTime;
-import static org.jooq.impl.DSL.exists;
 
 @Repository
 @RequiredArgsConstructor
@@ -32,15 +31,22 @@ public class JooqTaskRepository implements TaskRepository {
     }
 
     @Override
-    public Optional<TaskDto> findByIdAndUserId(Long taskId, Long userId) {
+    public Optional<TaskDto> findById(Long taskId) {
         return dsl
                 .select(TASKS.fields())
                 .from(TASKS)
-                .join(TASK_MEMBERS)
-                .on(TASK_MEMBERS.TASK_ID.eq(TASKS.ID))
                 .where(TASKS.ID.eq(taskId))
-                .and(TASK_MEMBERS.USER_ID.eq(userId))
                 .fetchOptional(record -> toDto(record.into(TASKS)));
+    }
+
+    @Override
+    public Optional<TaskMemberRole> findMemberRole(Long taskId, Long userId) {
+        return dsl
+                .select(TASK_MEMBERS.ROLE)
+                .from(TASK_MEMBERS)
+                .where(TASK_MEMBERS.TASK_ID.eq(taskId))
+                .and(TASK_MEMBERS.USER_ID.eq(userId))
+                .fetchOptional(TASK_MEMBERS.ROLE);
     }
 
     @Override
@@ -59,7 +65,16 @@ public class JooqTaskRepository implements TaskRepository {
     }
 
     @Override
-    public Optional<TaskDto> update(TaskDto task, Long userId) {
+    public void addOwner(Long taskId, Long userId) {
+        dsl.insertInto(TASK_MEMBERS)
+                .set(TASK_MEMBERS.TASK_ID, taskId)
+                .set(TASK_MEMBERS.USER_ID, userId)
+                .set(TASK_MEMBERS.ROLE, TaskMemberRole.owner)
+                .execute();
+    }
+
+    @Override
+    public Optional<TaskDto> update(TaskDto task) {
         return Optional.ofNullable(
                         dsl.update(TASKS)
                                 .set(TASKS.NAME, task.name())
@@ -69,13 +84,6 @@ public class JooqTaskRepository implements TaskRepository {
                                 .set(TASKS.DEADLINE, task.deadline())
                                 .set(TASKS.UPDATED_AT, currentOffsetDateTime())
                                 .where(TASKS.ID.eq(task.id()))
-                                .and(exists(
-                                        dsl.selectOne()
-                                                .from(TASK_MEMBERS)
-                                                .where(TASK_MEMBERS.TASK_ID.eq(TASKS.ID))
-                                                .and(TASK_MEMBERS.USER_ID.eq(userId))
-                                                .and(TASK_MEMBERS.ROLE.in(TaskMemberRole.owner, TaskMemberRole.editor))
-                                ))
                                 .returning()
                                 .fetchOne()
                 )
@@ -83,16 +91,9 @@ public class JooqTaskRepository implements TaskRepository {
     }
 
     @Override
-    public boolean deleteByIdAndUserId(Long taskId, Long userId) {
+    public boolean deleteById(Long taskId) {
         return dsl.deleteFrom(TASKS)
                 .where(TASKS.ID.eq(taskId))
-                .and(exists(
-                        dsl.selectOne()
-                                .from(TASK_MEMBERS)
-                                .where(TASK_MEMBERS.TASK_ID.eq(TASKS.ID))
-                                .and(TASK_MEMBERS.USER_ID.eq(userId))
-                                .and(TASK_MEMBERS.ROLE.eq(TaskMemberRole.owner))
-                ))
                 .execute() == 1;
     }
 
