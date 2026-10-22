@@ -7,7 +7,85 @@ info:
     Теги, участники задач и зависимости пока не входят в API-контракт.
 servers:
   - url: /
+security:
+  - sessionCookie: []
 paths:
+  /auth/register:
+    post:
+      security: []
+      summary: Зарегистрировать пользователя
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Пользователь зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: Имя пользователя уже занято
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/login:
+    post:
+      security: []
+      summary: Войти в систему
+      description: При успешном входе сервер создаёт сессию и возвращает cookie `JSESSIONID`.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Вход выполнен
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: JSESSIONID=abc123; Path=/; HttpOnly
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/logout:
+    post:
+      summary: Выйти из системы
+      operationId: logout
+      responses:
+        '204':
+          description: Сессия завершена
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/me:
+    get:
+      summary: Получить текущего пользователя
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: Текущий пользователь
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /tasks:
     get:
       summary: Получить список задач
@@ -90,6 +168,11 @@ paths:
         '404':
           $ref: '#/components/responses/TaskNotFound'
 components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
   parameters:
     TaskId:
       name: taskId
@@ -141,12 +224,53 @@ components:
         enum: [asc, desc]
         default: desc
   schemas:
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: egor
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          example: strong-password
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: egor
+        password:
+          type: string
+          format: password
+          example: strong-password
+    UserResponse:
+      type: object
+      required: [id, username]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        username:
+          type: string
+          example: egor
     TaskStatus:
       type: string
       description: |
         В API хранятся технические английские значения.
         Пользовательский интерфейс переводит их на русский.
-      enum: [created, in_progress, completed]
+      enum: [planned, started, completed]
     TaskListItem:
       type: object
       description: Компактная задача для отрисовки списка без текста заметки.
@@ -238,7 +362,7 @@ components:
           type: string
           nullable: true
           format: date-time
-          description: '`null` удаляет ранее установленный дедлайн.'
+          description: Передайте null, чтобы удалить срок задачи
           example: '2026-11-20T18:00:00Z'
     ErrorResponse:
       type: object
@@ -260,6 +384,12 @@ components:
           example:
             name: Название не должно быть пустым
   responses:
+    Unauthorized:
+      description: Пользователь не аутентифицирован или передал неверные данные
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     ValidationError:
       description: Некорректные входные данные
       content:
