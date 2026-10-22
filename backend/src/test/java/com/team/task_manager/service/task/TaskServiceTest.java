@@ -8,6 +8,7 @@ import com.team.task_manager.controller.error.exception.task.TaskNotFoundExcepti
 import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.repository.task.entity.TaskDto;
+import com.team.task_manager.service.task.entity.TaskUpdateDto;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,7 +43,7 @@ class TaskServiceTest {
         repository.tasks = tasks;
         TaskService service = new TaskService(repository);
 
-        assertSame(tasks, service.getAll(USER_ID));
+        assertSame(tasks, service.findAll(USER_ID));
     }
 
     @Test
@@ -79,14 +80,14 @@ class TaskServiceTest {
         repository.memberRole = Optional.of(TaskMemberRole.viewer);
         TaskService service = new TaskService(repository);
 
-        assertThrows(TaskAccessDeniedException.class, () -> service.update(task(TASK_ID, USER_ID), USER_ID));
+        assertThrows(TaskAccessDeniedException.class, () -> service.update(TASK_ID, update(), USER_ID));
     }
 
     @Test
     void throwsWhenUpdatedTaskIsMissing() {
         TaskService service = new TaskService(new RecordingTaskRepository());
 
-        assertThrows(TaskNotFoundException.class, () -> service.update(task(TASK_ID, USER_ID), USER_ID));
+        assertThrows(TaskNotFoundException.class, () -> service.update(TASK_ID, update(), USER_ID));
     }
 
     @Test
@@ -98,8 +99,38 @@ class TaskServiceTest {
         repository.updatedTask = Optional.of(task);
         TaskService service = new TaskService(repository);
 
-        assertSame(task, service.update(task, USER_ID));
-        assertSame(task, repository.taskToUpdate);
+        assertSame(task, service.update(TASK_ID, update(), USER_ID));
+        assertEquals("Task", repository.taskToUpdate.name());
+    }
+
+    @Test
+    void preservesUnspecifiedFieldsAndClearsDeadline() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        TaskDto existingTask = new TaskDto(
+                TASK_ID,
+                USER_ID,
+                "Original",
+                "Description",
+                1,
+                null,
+                java.time.OffsetDateTime.now(),
+                null,
+                null
+        );
+        repository.task = Optional.of(existingTask);
+        repository.memberRole = Optional.of(TaskMemberRole.owner);
+        repository.updatedTask = Optional.of(existingTask);
+        TaskService service = new TaskService(repository);
+
+        service.update(
+                TASK_ID,
+                new TaskUpdateDto("Changed", null, null, null, null, true),
+                USER_ID
+        );
+
+        assertEquals("Changed", repository.taskToUpdate.name());
+        assertEquals("Description", repository.taskToUpdate.description());
+        assertNull(repository.taskToUpdate.deadline());
     }
 
     @Test
@@ -134,6 +165,10 @@ class TaskServiceTest {
 
     private static TaskDto task(Long id, Long createdByUserId) {
         return new TaskDto(id, createdByUserId, "Task", "Description", 1, null, null, null, null);
+    }
+
+    private static TaskUpdateDto update() {
+        return new TaskUpdateDto("Task", "Description", 1, null, null, false);
     }
 
     private static final class RecordingTaskRepository implements TaskRepository {

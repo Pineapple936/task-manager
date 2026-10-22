@@ -7,6 +7,7 @@ import com.team.task_manager.controller.error.exception.task.TaskNotFoundExcepti
 import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.repository.task.entity.TaskDto;
+import com.team.task_manager.service.task.entity.TaskUpdateDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,18 +54,30 @@ public class TaskService {
     }
 
     @Transactional
-    public TaskDto update(TaskDto task, Long userId) {
-        taskRepository.findById(task.id())
-                .orElseThrow(() -> new TaskNotFoundException(task.id()));
+    public TaskDto update(Long taskId, TaskUpdateDto update, Long userId) {
+        TaskDto task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        TaskMemberRole role = taskRepository.findMemberRole(task.id(), userId)
-                .orElseThrow(() -> new TaskAccessDeniedException(task.id()));
+        TaskMemberRole role = taskRepository.findMemberRole(taskId, userId)
+                .orElseThrow(() -> new TaskAccessDeniedException(taskId));
         if (role != TaskMemberRole.owner && role != TaskMemberRole.editor) {
-            throw new TaskAccessDeniedException(task.id());
+            throw new TaskAccessDeniedException(taskId);
         }
 
-        return taskRepository.update(task)
-                .orElseThrow(() -> new TaskNotFoundException(task.id()));
+        TaskDto updatedTask = new TaskDto(
+                task.id(),
+                task.createdByUserId(),
+                update.name() != null ? update.name() : task.name(),
+                update.description() != null ? update.description() : task.description(),
+                update.priority() != null ? update.priority() : task.priority(),
+                update.status() != null ? update.status() : task.status(),
+                update.deadlineSpecified() ? update.deadline() : task.deadline(),
+                task.createdAt(),
+                task.updatedAt()
+        );
+
+        return taskRepository.update(updatedTask)
+                .orElseThrow(() -> new TaskNotFoundException(taskId));
     }
 
     @Transactional
