@@ -1,6 +1,7 @@
 package com.team.task_manager.controller.task.entity.response;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 import com.team.task_manager.controller.task.entity.TaskApiStatus;
 
@@ -11,6 +12,7 @@ public record TaskDetailsResponse(
         TaskApiStatus status,
         OffsetDateTime deadline,
         OffsetDateTime createdAt,
-        String description
+        String description,
+        List<TaskDependencyResponse> dependencies
 ) {
 }

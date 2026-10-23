@@ -4,7 +4,7 @@ info:
   version: 0.1.0
   description: |
     Базовый REST API менеджера задач.
-    Теги, участники задач и зависимости пока не входят в API-контракт.
+    Теги и управление участниками задач пока не входят в API-контракт.
 servers:
   - url: /
 security:
@@ -174,6 +174,33 @@ paths:
           description: Задача удалена
         '404':
           $ref: '#/components/responses/TaskNotFound'
+  /tasks/{taskId}/dependencies/{dependencyTaskId}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+      - $ref: '#/components/parameters/DependencyTaskId'
+    post:
+      summary: Добавить зависимость задачи
+      description: Задача `taskId` будет зависеть от задачи `dependencyTaskId`.
+      operationId: addTaskDependency
+      responses:
+        '204':
+          description: Зависимость добавлена
+        '400':
+          description: Задача не может зависеть сама от себя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+        '409':
+          description: Зависимость уже существует или создаёт цикл
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   securitySchemes:
     sessionCookie:
@@ -186,6 +213,15 @@ components:
       in: path
       required: true
       description: Идентификатор задачи
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    DependencyTaskId:
+      name: dependencyTaskId
+      in: path
+      required: true
+      description: Идентификатор задачи, от которой зависит текущая задача
       schema:
         type: integer
         format: int64
@@ -308,6 +344,7 @@ components:
         - status
         - deadline
         - createdAt
+        - dependencies
       properties:
         id:
           type: integer
@@ -334,6 +371,25 @@ components:
           type: string
           format: date-time
           example: '2026-10-21T12:00:00Z'
+        dependencies:
+          type: array
+          description: Краткие данные задач, от которых зависит текущая задача
+          items:
+            $ref: '#/components/schemas/TaskDependency'
+    TaskDependency:
+      type: object
+      required: [id, name, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 2
+        name:
+          type: string
+          maxLength: 255
+          example: Спроектировать базу данных
+        status:
+          $ref: '#/components/schemas/TaskStatus'
     TaskDetails:
       description: Полная задача с текстом заметки.
       allOf:
@@ -431,6 +487,12 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
     TaskNotFound:
       description: Задача не найдена
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Недостаточно прав для выполнения действия
       content:
         application/json:
           schema:

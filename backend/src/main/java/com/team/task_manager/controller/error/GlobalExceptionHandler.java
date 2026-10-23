@@ -6,7 +6,10 @@ import java.util.Map;
 import com.team.task_manager.controller.error.exception.auth.UsernameAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.task.InvalidTaskFilterException;
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
+import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
+import com.team.task_manager.controller.error.exception.task.TaskDependencyCycleException;
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
+import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
 import com.team.task_manager.controller.error.entity.response.ErrorResponse;
 import com.team.task_manager.controller.error.entity.response.ValidationErrorResponse;
 import jakarta.validation.ConstraintViolationException;
@@ -40,6 +43,36 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 "INVALID_TASK_FILTER",
                 exception.getMessage()
+        );
+    }
+
+    @ExceptionHandler(TaskSelfDependencyException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleTaskSelfDependency(TaskSelfDependencyException exception) {
+        return new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "TASK_SELF_DEPENDENCY",
+                "Задача не может зависеть сама от себя"
+        );
+    }
+
+    @ExceptionHandler(TaskDependencyAlreadyExistsException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleTaskDependencyAlreadyExists(TaskDependencyAlreadyExistsException exception) {
+        return new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                "TASK_DEPENDENCY_ALREADY_EXISTS",
+                "Такая зависимость уже существует"
+        );
+    }
+
+    @ExceptionHandler(TaskDependencyCycleException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleTaskDependencyCycle(TaskDependencyCycleException exception) {
+        return new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                "TASK_DEPENDENCY_CYCLE",
+                "Зависимость создаёт цикл"
         );
     }
 

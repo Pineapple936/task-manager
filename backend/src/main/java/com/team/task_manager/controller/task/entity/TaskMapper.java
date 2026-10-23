@@ -3,6 +3,7 @@ package com.team.task_manager.controller.task.entity;
 import com.team.task_manager.controller.task.entity.request.CreateTaskRequest;
 import com.team.task_manager.controller.task.entity.request.UpdateTaskRequest;
 import com.team.task_manager.controller.task.entity.response.TaskDetailsResponse;
+import com.team.task_manager.controller.task.entity.response.TaskDependencyResponse;
 import com.team.task_manager.controller.task.entity.response.TaskListItemResponse;
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
@@ -44,7 +45,14 @@ public class TaskMapper {
                 task.priority(),
                 toApiStatus(task.status()),
                 task.deadline(),
-                task.createdAt()
+                task.createdAt(),
+                task.dependencies().stream()
+                        .map(dependency -> new TaskDependencyResponse(
+                                dependency.id(),
+                                dependency.name(),
+                                toApiStatus(dependency.status())
+                        ))
+                        .toList()
         );
     }
 
@@ -56,7 +64,14 @@ public class TaskMapper {
                 toApiStatus(task.status()),
                 task.deadline(),
                 task.createdAt(),
-                task.description()
+                task.description(),
+                task.dependencies().stream()
+                        .map(dependency -> new TaskDependencyResponse(
+                                dependency.id(),
+                                dependency.name(),
+                                toApiStatus(dependency.status())
+                        ))
+                        .toList()
         );
     }
 

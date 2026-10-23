@@ -5,7 +5,10 @@ import java.util.List;
 import java.util.Optional;
 
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
+import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
+import com.team.task_manager.controller.error.exception.task.TaskDependencyCycleException;
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
+import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
 import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.TaskRepository;
@@ -213,6 +216,86 @@ class TaskServiceTest {
         assertEquals(TASK_ID, repository.deletedTaskId);
     }
 
+    @Test
+    void addsDependencyWhenUserCanEditTask() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRole = Optional.of(TaskMemberRole.editor);
+        TaskService service = service(repository);
+
+        service.addDependency(TASK_ID, 30L, USER_ID);
+
+        assertEquals(TASK_ID, repository.dependencyTaskId);
+        assertEquals(30L, repository.addedDependencyTaskId);
+    }
+
+    @Test
+    void rejectsDependencyOnSameTask() {
+        TaskService service = service(new RecordingTaskRepository());
+
+        assertThrows(
+                TaskSelfDependencyException.class,
+                () -> service.addDependency(TASK_ID, TASK_ID, USER_ID)
+        );
+    }
+
+    @Test
+    void rejectsDuplicateDependency() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRole = Optional.of(TaskMemberRole.owner);
+        repository.dependencyExists = true;
+        TaskService service = service(repository);
+
+        assertThrows(
+                TaskDependencyAlreadyExistsException.class,
+                () -> service.addDependency(TASK_ID, 30L, USER_ID)
+        );
+    }
+
+    @Test
+    void rejectsMissingDependencyTask() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.missingTaskId = 30L;
+        TaskService service = service(repository);
+
+        assertThrows(
+                TaskNotFoundException.class,
+                () -> service.addDependency(TASK_ID, 30L, USER_ID)
+        );
+    }
+
+    @Test
+    void rejectsDependencyWhenUserCannotEditTask() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRole = Optional.of(TaskMemberRole.viewer);
+        TaskService service = service(repository);
+
+        assertThrows(
+                TaskAccessDeniedException.class,
+                () -> service.addDependency(TASK_ID, 30L, USER_ID)
+        );
+    }
+
+    @Test
+    void rejectsDependencyThatCreatesCycle() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRole = Optional.of(TaskMemberRole.owner);
+        repository.dependencyEdges = List.of(
+                List.of(30L, 40L),
+                List.of(40L, TASK_ID)
+        );
+        TaskService service = service(repository);
+
+        assertThrows(
+                TaskDependencyCycleException.class,
+                () -> service.addDependency(TASK_ID, 30L, USER_ID)
+        );
+    }
+
     private static TaskDto task(Long id, Long createdByUserId) {
         return new TaskDto(id, createdByUserId, "Task", "Description", 1, null, null, null, null);
     }
@@ -257,6 +340,11 @@ class TaskServiceTest {
         private Long ownerTaskId;
         private Long ownerUserId;
         private Long deletedTaskId;
+        private boolean dependencyExists;
+        private List<List<Long>> dependencyEdges = List.of();
+        private Long dependencyTaskId;
+        private Long addedDependencyTaskId;
+        private Long missingTaskId;
 
         @Override
         public List<TaskDto> findAllByUserId(Long userId) {
@@ -265,6 +353,9 @@ class TaskServiceTest {
 
         @Override
         public Optional<TaskDto> findById(Long taskId) {
+            if (taskId.equals(missingTaskId)) {
+                return Optional.empty();
+            }
             return task;
         }
 
@@ -283,6 +374,22 @@ class TaskServiceTest {
         public void addOwner(Long taskId, Long userId) {
             ownerTaskId = taskId;
             ownerUserId = userId;
+        }
+
+        @Override
+        public boolean dependencyExists(Long taskId, Long dependencyTaskId) {
+            return dependencyExists;
+        }
+
+        @Override
+        public List<List<Long>> findAllDependencyEdges() {
+            return dependencyEdges;
+        }
+
+        @Override
+        public void addDependency(Long taskId, Long dependencyTaskId) {
+            this.dependencyTaskId = taskId;
+            this.addedDependencyTaskId = dependencyTaskId;
         }
 
         @Override

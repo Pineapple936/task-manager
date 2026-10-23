@@ -172,4 +172,12 @@ class TaskControllerTest {
 
         verify(taskService).create(any(), eq(USER_ID));
     }
+
+    @Test
+    void addsTaskDependencyForAuthenticatedUser() throws Exception {
+        mockMvc.perform(post("/tasks/20/dependencies/30"))
+                .andExpect(status().isNoContent());
+
+        verify(taskService).addDependency(20L, 30L, USER_ID);
+    }
 }

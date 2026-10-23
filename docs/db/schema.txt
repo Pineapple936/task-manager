@@ -71,5 +71,5 @@ Ref: task_members.user_id > users.id [delete: restrict]
 Ref: task_tags.task_id > tasks.id [delete: cascade]
 Ref: task_tags.tag_id > tags.id [delete: cascade]
 
-Ref: task_dependencies.task_id > tasks.id [delete: restrict]
-Ref: task_dependencies.depends_on_task_id > tasks.id [delete: restrict]
+Ref: task_dependencies.task_id > tasks.id [delete: cascade]
+Ref: task_dependencies.depends_on_task_id > tasks.id [delete: cascade]

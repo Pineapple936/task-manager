@@ -17,6 +17,12 @@ public interface TaskRepository {
 
     void addOwner(Long taskId, Long userId);
 
+    boolean dependencyExists(Long taskId, Long dependencyTaskId);
+
+    List<List<Long>> findAllDependencyEdges();
+
+    void addDependency(Long taskId, Long dependencyTaskId);
+
     Optional<TaskDto> update(TaskDto task);
 
     boolean deleteById(Long taskId);

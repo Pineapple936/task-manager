@@ -1,16 +1,19 @@
 package com.team.task_manager.repository.task;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.jooq.generated.tables.records.TasksRecord;
+import com.team.task_manager.repository.task.entity.TaskDependencyDto;
 import com.team.task_manager.repository.task.entity.TaskDto;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
 
 import static com.team.task_manager.jooq.generated.Tables.TASKS;
+import static com.team.task_manager.jooq.generated.Tables.TASK_DEPENDENCIES;
 import static com.team.task_manager.jooq.generated.Tables.TASK_MEMBERS;
 import static org.jooq.impl.DSL.currentOffsetDateTime;
 
@@ -21,13 +24,15 @@ public class JooqTaskRepository implements TaskRepository {
 
     @Override
     public List<TaskDto> findAllByUserId(Long userId) {
-        return dsl
+        List<TaskDto> tasks = dsl
                 .select(TASKS.fields())
                 .from(TASKS)
                 .join(TASK_MEMBERS)
                 .on(TASK_MEMBERS.TASK_ID.eq(TASKS.ID))
                 .where(TASK_MEMBERS.USER_ID.eq(userId))
                 .fetch(record -> toDto(record.into(TASKS)));
+
+        return withDependencies(tasks);
     }
 
     @Override
@@ -36,7 +41,8 @@ public class JooqTaskRepository implements TaskRepository {
                 .select(TASKS.fields())
                 .from(TASKS)
                 .where(TASKS.ID.eq(taskId))
-                .fetchOptional(record -> toDto(record.into(TASKS)));
+                .fetchOptional(record -> toDto(record.into(TASKS)))
+                .map(task -> withDependencies(List.of(task)).getFirst());
     }
 
     @Override
@@ -74,6 +80,37 @@ public class JooqTaskRepository implements TaskRepository {
     }
 
     @Override
+    public boolean dependencyExists(Long taskId, Long dependencyTaskId) {
+        return dsl.fetchExists(
+                dsl.selectOne()
+                        .from(TASK_DEPENDENCIES)
+                        .where(TASK_DEPENDENCIES.TASK_ID.eq(taskId))
+                        .and(TASK_DEPENDENCIES.DEPENDS_ON_TASK_ID.eq(dependencyTaskId))
+        );
+    }
+
+    @Override
+    public List<List<Long>> findAllDependencyEdges() {
+        return dsl.select(
+                        TASK_DEPENDENCIES.TASK_ID,
+                        TASK_DEPENDENCIES.DEPENDS_ON_TASK_ID
+                )
+                .from(TASK_DEPENDENCIES)
+                .fetch(record -> List.of(
+                        record.get(TASK_DEPENDENCIES.TASK_ID),
+                        record.get(TASK_DEPENDENCIES.DEPENDS_ON_TASK_ID)
+                ));
+    }
+
+    @Override
+    public void addDependency(Long taskId, Long dependencyTaskId) {
+        dsl.insertInto(TASK_DEPENDENCIES)
+                .set(TASK_DEPENDENCIES.TASK_ID, taskId)
+                .set(TASK_DEPENDENCIES.DEPENDS_ON_TASK_ID, dependencyTaskId)
+                .execute();
+    }
+
+    @Override
     public Optional<TaskDto> update(TaskDto task) {
         return Optional.ofNullable(
                         dsl.update(TASKS)
@@ -87,7 +124,8 @@ public class JooqTaskRepository implements TaskRepository {
                                 .returning()
                                 .fetchOne()
                 )
-                .map(JooqTaskRepository::toDto);
+                .map(JooqTaskRepository::toDto)
+                .map(updatedTask -> updatedTask.withDependencies(task.dependencies()));
     }
 
     @Override
@@ -95,6 +133,40 @@ public class JooqTaskRepository implements TaskRepository {
         return dsl.deleteFrom(TASKS)
                 .where(TASKS.ID.eq(taskId))
                 .execute() == 1;
+    }
+
+    private List<TaskDto> withDependencies(List<TaskDto> tasks) {
+        if (tasks.isEmpty()) {
+            return tasks;
+        }
+
+        var dependencyTask = TASKS.as("dependency_task");
+        Map<Long, List<TaskDependencyDto>> dependenciesByTaskId = dsl
+                .select(
+                        TASK_DEPENDENCIES.TASK_ID,
+                        dependencyTask.ID,
+                        dependencyTask.NAME,
+                        dependencyTask.STATUS
+                )
+                .from(TASK_DEPENDENCIES)
+                .join(dependencyTask)
+                .on(dependencyTask.ID.eq(TASK_DEPENDENCIES.DEPENDS_ON_TASK_ID))
+                .where(TASK_DEPENDENCIES.TASK_ID.in(tasks.stream().map(TaskDto::id).toList()))
+                .orderBy(TASK_DEPENDENCIES.TASK_ID, dependencyTask.ID)
+                .fetchGroups(
+                        TASK_DEPENDENCIES.TASK_ID,
+                        record -> new TaskDependencyDto(
+                                record.get(dependencyTask.ID),
+                                record.get(dependencyTask.NAME),
+                                record.get(dependencyTask.STATUS)
+                        )
+                );
+
+        return tasks.stream()
+                .map(task -> task.withDependencies(
+                        dependenciesByTaskId.getOrDefault(task.id(), List.of())
+                ))
+                .toList();
     }
 
     private static TaskDto toDto(TasksRecord record) {

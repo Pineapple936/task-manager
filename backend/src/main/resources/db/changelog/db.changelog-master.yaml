@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/changes/000-initial-schema.sql
   - include:
       file: db/changelog/changes/001-add-task-priority-constraint.sql
+  - include:
+      file: db/changelog/changes/002-cascade-task-dependencies-on-delete.sql

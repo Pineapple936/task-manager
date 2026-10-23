@@ -92,6 +92,16 @@ public class TaskController {
         );
     }
 
+    @PostMapping("/{taskId}/dependencies/{dependencyTaskId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void addDependency(
+            @PathVariable @Min(value = 1, message = "Идентификатор задачи должен быть положительным") Long taskId,
+            @PathVariable @Min(value = 1, message = "Идентификатор задачи должен быть положительным") Long dependencyTaskId,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        taskService.addDependency(taskId, dependencyTaskId, user.id());
+    }
+
     @PatchMapping("/{taskId}")
     public TaskDetailsResponse update(
             @PathVariable @Min(value = 1, message = "Идентификатор задачи должен быть положительным") Long taskId,
