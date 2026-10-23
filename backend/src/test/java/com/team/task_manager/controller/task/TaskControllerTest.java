@@ -137,6 +137,16 @@ class TaskControllerTest {
     }
 
     @Test
+    void rejectsPriorityFilterOutsideAllowedRange() throws Exception {
+        mockMvc.perform(get("/tasks")
+                        .queryParam("priority", "11"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_TASK_FILTER"));
+
+        verifyNoInteractions(taskService);
+    }
+
+    @Test
     void createsTaskForAuthenticatedUserAndReturnsApiResponse() throws Exception {
         OffsetDateTime createdAt = OffsetDateTime.parse("2026-10-23T00:00:00+03:00");
         when(taskService.create(any(), eq(USER_ID))).thenReturn(new TaskDto(
@@ -144,7 +154,7 @@ class TaskControllerTest {
                 USER_ID,
                 "Task",
                 "Description",
-                5,
+                0,
                 TaskStatus.planned,
                 null,
                 createdAt,
@@ -153,9 +163,10 @@ class TaskControllerTest {
 
         mockMvc.perform(post("/tasks")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Task\",\"description\":\"Description\",\"priority\":5}"))
+                        .content("{\"name\":\"Task\",\"description\":\"Description\",\"priority\":0}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.priority").value(0))
                 .andExpect(jsonPath("$.status").value("planned"))
                 .andExpect(jsonPath("$.description").value("Description"));
 

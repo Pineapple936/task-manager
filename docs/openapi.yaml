@@ -204,7 +204,8 @@ components:
       description: Фильтр по приоритету
       schema:
         type: integer
-        minimum: 1
+        minimum: 0
+        maximum: 10
     DeadlineFromFilter:
       name: deadlineFrom
       in: query
@@ -319,6 +320,8 @@ components:
         priority:
           type: integer
           description: Числовой приоритет задачи
+          minimum: 0
+          maximum: 10
           example: 5
         status:
           $ref: '#/components/schemas/TaskStatus'
@@ -359,6 +362,8 @@ components:
           example: Собрать результаты тестирования и оформить их в документе.
         priority:
           type: integer
+          minimum: 0
+          maximum: 10
           example: 5
         deadline:
           type: string
@@ -381,6 +386,8 @@ components:
           example: Добавить в отчёт результаты нагрузочных тестов.
         priority:
           type: integer
+          minimum: 0
+          maximum: 10
           example: 4
         status:
           $ref: '#/components/schemas/TaskStatus'

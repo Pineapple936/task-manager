@@ -16,8 +16,8 @@ import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
 import com.team.task_manager.service.task.entity.sort.SortDirection;
 import com.team.task_manager.service.task.entity.sort.TaskSortField;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -46,7 +46,9 @@ public class TaskController {
     public List<TaskListItemResponse> findAll(
             @AuthenticationPrincipal AuthenticatedUser user,
             @RequestParam(required = false) TaskApiStatus status,
-            @RequestParam(required = false) @Positive Integer priority,
+            @RequestParam(required = false)
+            @Min(value = 0, message = "Приоритет должен быть от 0 до 10")
+            @Max(value = 10, message = "Приоритет должен быть от 0 до 10") Integer priority,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime deadlineFrom,
             @RequestParam(required = false)

@@ -3,8 +3,9 @@ package com.team.task_manager.controller.task.entity.request;
 import java.time.OffsetDateTime;
 
 import com.team.task_manager.controller.task.entity.TaskApiStatus;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import org.openapitools.jackson.nullable.JsonNullable;
 
@@ -21,7 +22,8 @@ public record UpdateTaskRequest(
 
         JsonNullable<
                 @NotNull(message = "Приоритет не может быть null")
-                @Positive(message = "Приоритет должен быть положительным")
+                @Min(value = 0, message = "Приоритет должен быть от 0 до 10")
+                @Max(value = 10, message = "Приоритет должен быть от 0 до 10")
                 Integer> priority,
 
         JsonNullable<

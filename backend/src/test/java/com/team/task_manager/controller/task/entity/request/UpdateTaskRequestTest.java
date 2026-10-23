@@ -43,4 +43,17 @@ class UpdateTaskRequestTest {
         assertTrue(violations.stream()
                 .anyMatch(violation -> violation.getMessage().equals("Название не может быть null")));
     }
+
+    @Test
+    void rejectsPriorityOutsideAllowedRange() throws Exception {
+        UpdateTaskRequest request = objectMapper.readValue("{\"priority\":11}", UpdateTaskRequest.class);
+
+        Set<ConstraintViolation<UpdateTaskRequest>> violations;
+        try (var validatorFactory = Validation.buildDefaultValidatorFactory()) {
+            violations = validatorFactory.getValidator().validate(request);
+        }
+
+        assertTrue(violations.stream()
+                .anyMatch(violation -> violation.getMessage().equals("Приоритет должен быть от 0 до 10")));
+    }
 }

@@ -2,6 +2,8 @@ package com.team.task_manager.controller.task.entity.request;
 
 import java.time.OffsetDateTime;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -15,6 +17,8 @@ public record CreateTaskRequest(
         String description,
 
         @NotNull(message = "Приоритет обязателен")
+        @Min(value = 0, message = "Приоритет должен быть от 0 до 10")
+        @Max(value = 10, message = "Приоритет должен быть от 0 до 10")
         Integer priority,
 
         OffsetDateTime deadline
