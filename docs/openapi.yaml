@@ -112,6 +112,8 @@ paths:
                   $ref: '#/components/schemas/TaskListItem'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       summary: Создать задачу
       operationId: createTask
@@ -130,11 +132,14 @@ paths:
                 $ref: '#/components/schemas/TaskDetails'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /tasks/{taskId}:
     parameters:
       - $ref: '#/components/parameters/TaskId'
     get:
       summary: Получить задачу по идентификатору
+      description: Задача доступна любому её участнику.
       operationId: getTaskById
       responses:
         '200':
@@ -143,11 +148,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TaskDetails'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/TaskNotFound'
     patch:
       summary: Частично изменить задачу
-      description: Передаются только поля, которые нужно изменить.
+      description: >-
+        Передаются только поля, которые нужно изменить. Пустой объект не изменяет
+        задачу. Изменение доступно владельцу и редактору.
       operationId: updateTask
       requestBody:
         required: true
@@ -164,17 +177,28 @@ paths:
                 $ref: '#/components/schemas/TaskDetails'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/TaskNotFound'
     delete:
       summary: Удалить задачу
       description: >-
         Перед удалением прямые зависимости задачи назначаются всем задачам,
-        которые напрямую зависели от неё. Существующие связи не дублируются.
+        которые напрямую зависели от неё. Существующие связи не дублируются. Удаление
+        доступно только владельцу.
       operationId: deleteTask
       responses:
         '204':
           description: Задача удалена
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/TaskNotFound'
   /tasks/{taskId}/dependencies/{dependencyTaskId}:
@@ -183,7 +207,9 @@ paths:
       - $ref: '#/components/parameters/DependencyTaskId'
     post:
       summary: Добавить зависимость задачи
-      description: Задача `taskId` будет зависеть от задачи `dependencyTaskId`.
+      description: >-
+        Задача `taskId` будет зависеть от задачи `dependencyTaskId`. Операция доступна
+        владельцу и редактору задачи `taskId`.
       operationId: addTaskDependency
       responses:
         '204':
@@ -194,12 +220,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/TaskNotFound'
         '409':
           description: Зависимость уже существует или создаёт цикл
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Удалить зависимость задачи
+      description: >-
+        Задача `taskId` перестанет зависеть от задачи `dependencyTaskId`. Операция
+        доступна владельцу и редактору задачи `taskId`.
+      operationId: deleteTaskDependency
+      responses:
+        '204':
+          description: Зависимость удалена
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Задача или зависимость не найдена
           content:
             application/json:
               schema:
@@ -319,6 +368,7 @@ components:
         password:
           type: string
           format: password
+          minLength: 4
           example: strong-password
     UserResponse:
       type: object
@@ -416,6 +466,8 @@ components:
           example: Подготовить отчёт
         description:
           type: string
+          nullable: true
+          maxLength: 5000
           default: ''
           description: Полный текст заметки или описание задачи
           example: Собрать результаты тестирования и оформить их в документе.
@@ -432,15 +484,14 @@ components:
     UpdateTaskRequest:
       type: object
       additionalProperties: false
-      minProperties: 1
       properties:
         name:
           type: string
-          minLength: 1
           maxLength: 255
           example: Подготовить итоговый отчёт
         description:
           type: string
+          maxLength: 5000
           description: Полный текст заметки или описание задачи
           example: Добавить в отчёт результаты нагрузочных тестов.
         priority:
@@ -458,7 +509,22 @@ components:
           example: '2026-11-20T18:00:00Z'
     ErrorResponse:
       type: object
+      additionalProperties: false
       required: [status, error, message]
+      properties:
+        status:
+          type: integer
+          example: 400
+        error:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          example: Переданы некорректные данные
+    ValidationErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [status, error, message, fieldErrors]
       properties:
         status:
           type: integer
@@ -487,7 +553,9 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            oneOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - $ref: '#/components/schemas/ValidationErrorResponse'
     TaskNotFound:
       description: Задача не найдена
       content:
