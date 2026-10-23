@@ -23,6 +23,12 @@ public interface TaskRepository {
 
     void addDependency(Long taskId, Long dependencyTaskId);
 
+    List<Long> findDependencyIds(Long taskId);
+
+    List<Long> findDependentIds(Long taskId);
+
+    void addDependencyIfAbsent(Long taskId, Long dependencyTaskId);
+
     Optional<TaskDto> update(TaskDto task);
 
     boolean deleteById(Long taskId);

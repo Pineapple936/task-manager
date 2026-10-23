@@ -111,6 +111,31 @@ public class JooqTaskRepository implements TaskRepository {
     }
 
     @Override
+    public List<Long> findDependencyIds(Long taskId) {
+        return dsl.select(TASK_DEPENDENCIES.DEPENDS_ON_TASK_ID)
+                .from(TASK_DEPENDENCIES)
+                .where(TASK_DEPENDENCIES.TASK_ID.eq(taskId))
+                .fetch(TASK_DEPENDENCIES.DEPENDS_ON_TASK_ID);
+    }
+
+    @Override
+    public List<Long> findDependentIds(Long taskId) {
+        return dsl.select(TASK_DEPENDENCIES.TASK_ID)
+                .from(TASK_DEPENDENCIES)
+                .where(TASK_DEPENDENCIES.DEPENDS_ON_TASK_ID.eq(taskId))
+                .fetch(TASK_DEPENDENCIES.TASK_ID);
+    }
+
+    @Override
+    public void addDependencyIfAbsent(Long taskId, Long dependencyTaskId) {
+        dsl.insertInto(TASK_DEPENDENCIES)
+                .set(TASK_DEPENDENCIES.TASK_ID, taskId)
+                .set(TASK_DEPENDENCIES.DEPENDS_ON_TASK_ID, dependencyTaskId)
+                .onConflictDoNothing()
+                .execute();
+    }
+
+    @Override
     public Optional<TaskDto> update(TaskDto task) {
         return Optional.ofNullable(
                         dsl.update(TASKS)

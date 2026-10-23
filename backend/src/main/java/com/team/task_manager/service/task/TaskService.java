@@ -117,6 +117,16 @@ public class TaskService {
             throw new TaskAccessDeniedException(taskId);
         }
 
+        List<Long> dependencyIds = taskRepository.findDependencyIds(taskId);
+        List<Long> dependentIds = taskRepository.findDependentIds(taskId);
+        for (Long dependentTaskId : dependentIds) {
+            for (Long dependencyId : dependencyIds) {
+                if (!dependentTaskId.equals(dependencyId)) {
+                    taskRepository.addDependencyIfAbsent(dependentTaskId, dependencyId);
+                }
+            }
+        }
+
         if (!taskRepository.deleteById(taskId)) {
             throw new TaskNotFoundException(taskId);
         }

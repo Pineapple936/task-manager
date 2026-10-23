@@ -1,6 +1,7 @@
 package com.team.task_manager.service.task;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -208,11 +209,38 @@ class TaskServiceTest {
         RecordingTaskRepository repository = new RecordingTaskRepository();
         repository.task = Optional.of(task(TASK_ID, USER_ID));
         repository.memberRole = Optional.of(TaskMemberRole.owner);
+        repository.dependencyIds = List.of(1L, 2L);
+        repository.dependentIds = List.of(30L, 40L);
         repository.deleted = true;
         TaskService service = service(repository);
 
         service.delete(TASK_ID, USER_ID);
 
+        assertEquals(
+                List.of(
+                        List.of(30L, 1L),
+                        List.of(30L, 2L),
+                        List.of(40L, 1L),
+                        List.of(40L, 2L)
+                ),
+                repository.addedDependenciesIfAbsent
+        );
+        assertEquals(TASK_ID, repository.deletedTaskId);
+    }
+
+    @Test
+    void skipsSelfDependencyWhenReconnectWouldPointTaskToItself() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRole = Optional.of(TaskMemberRole.owner);
+        repository.dependencyIds = List.of(30L);
+        repository.dependentIds = List.of(30L);
+        repository.deleted = true;
+        TaskService service = service(repository);
+
+        service.delete(TASK_ID, USER_ID);
+
+        assertEquals(List.of(), repository.addedDependenciesIfAbsent);
         assertEquals(TASK_ID, repository.deletedTaskId);
     }
 
@@ -345,6 +373,9 @@ class TaskServiceTest {
         private Long dependencyTaskId;
         private Long addedDependencyTaskId;
         private Long missingTaskId;
+        private List<Long> dependencyIds = List.of();
+        private List<Long> dependentIds = List.of();
+        private final List<List<Long>> addedDependenciesIfAbsent = new ArrayList<>();
 
         @Override
         public List<TaskDto> findAllByUserId(Long userId) {
@@ -390,6 +421,21 @@ class TaskServiceTest {
         public void addDependency(Long taskId, Long dependencyTaskId) {
             this.dependencyTaskId = taskId;
             this.addedDependencyTaskId = dependencyTaskId;
+        }
+
+        @Override
+        public List<Long> findDependencyIds(Long taskId) {
+            return dependencyIds;
+        }
+
+        @Override
+        public List<Long> findDependentIds(Long taskId) {
+            return dependentIds;
+        }
+
+        @Override
+        public void addDependencyIfAbsent(Long taskId, Long dependencyTaskId) {
+            addedDependenciesIfAbsent.add(List.of(taskId, dependencyTaskId));
         }
 
         @Override

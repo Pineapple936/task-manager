@@ -168,6 +168,9 @@ paths:
           $ref: '#/components/responses/TaskNotFound'
     delete:
       summary: Удалить задачу
+      description: >-
+        Перед удалением прямые зависимости задачи назначаются всем задачам,
+        которые напрямую зависели от неё. Существующие связи не дублируются.
       operationId: deleteTask
       responses:
         '204':
