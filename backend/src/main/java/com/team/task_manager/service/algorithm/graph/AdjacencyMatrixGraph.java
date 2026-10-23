@@ -1,13 +1,13 @@
 package com.team.task_manager.service.algorithm.graph;
 
-import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class AdjacencyMatrixGraph {
     private final Map<Long, Integer> vertexIndexes = new HashMap<>();
-    private boolean[][] adjacencyMatrix = new boolean[0][0];
+    private final List<List<Boolean>> adjacencyMatrix = new ArrayList<>();
 
     public AdjacencyMatrixGraph(List<List<Long>> edges) {
         for (List<Long> edge : edges) {
@@ -21,7 +21,7 @@ public class AdjacencyMatrixGraph {
     private void addEdge(Long fromVertexId, Long toVertexId) {
         int fromVertexIndex = addVertexIfMissing(fromVertexId);
         int toVertexIndex = addVertexIfMissing(toVertexId);
-        adjacencyMatrix[fromVertexIndex][toVertexIndex] = true;
+        adjacencyMatrix.get(fromVertexIndex).set(toVertexIndex, true);
     }
 
     public boolean hasPath(Long startVertexId, Long targetVertexId) {
@@ -31,28 +31,24 @@ public class AdjacencyMatrixGraph {
             return false;
         }
 
-        ArrayDeque<Integer> verticesToVisit = new ArrayDeque<>();
-        boolean[] visitedVertices = new boolean[adjacencyMatrix.length];
-        verticesToVisit.push(startVertexIndex);
+        return dfs(startVertexIndex, targetVertexIndex, new boolean[adjacencyMatrix.size()]);
+    }
 
-        while (!verticesToVisit.isEmpty()) {
-            int currentVertexIndex = verticesToVisit.pop();
-            if (currentVertexIndex == targetVertexIndex) {
-                return true;
-            }
-
-            if (!visitedVertices[currentVertexIndex]) {
-                visitedVertices[currentVertexIndex] = true;
-                for (int adjacentVertexIndex = 0;
-                     adjacentVertexIndex < adjacencyMatrix.length;
-                     adjacentVertexIndex++) {
-                    if (adjacencyMatrix[currentVertexIndex][adjacentVertexIndex]) {
-                        verticesToVisit.push(adjacentVertexIndex);
-                    }
-                }
-            }
+    private boolean dfs(int currentVertexIndex, int targetVertexIndex, boolean[] visitedVertices) {
+        if (currentVertexIndex == targetVertexIndex) {
+            return true;
+        }
+        if (visitedVertices[currentVertexIndex]) {
+            return false;
         }
 
+        visitedVertices[currentVertexIndex] = true;
+        for (int adjacentVertexIndex = 0; adjacentVertexIndex < adjacencyMatrix.size(); adjacentVertexIndex++) {
+            if (adjacencyMatrix.get(currentVertexIndex).get(adjacentVertexIndex)
+                    && dfs(adjacentVertexIndex, targetVertexIndex, visitedVertices)) {
+                return true;
+            }
+        }
         return false;
     }
 
@@ -65,11 +61,15 @@ public class AdjacencyMatrixGraph {
         int newVertexIndex = vertexIndexes.size();
         vertexIndexes.put(vertexId, newVertexIndex);
 
-        boolean[][] expandedMatrix = new boolean[newVertexIndex + 1][newVertexIndex + 1];
-        for (int row = 0; row < adjacencyMatrix.length; row++) {
-            System.arraycopy(adjacencyMatrix[row], 0, expandedMatrix[row], 0, adjacencyMatrix.length);
+        for (List<Boolean> row : adjacencyMatrix) {
+            row.add(false);
         }
-        adjacencyMatrix = expandedMatrix;
+
+        List<Boolean> newRow = new ArrayList<>();
+        for (int column = 0; column <= newVertexIndex; column++) {
+            newRow.add(false);
+        }
+        adjacencyMatrix.add(newRow);
 
         return newVertexIndex;
     }
