@@ -134,6 +134,23 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /statistics/task:
+    get:
+      summary: Получить статистику по задачам
+      description: >-
+        Возвращает количество доступных текущему пользователю задач для каждого
+        статуса. Учитываются задачи, в которых пользователь является участником
+        с любой ролью.
+      operationId: getTaskStatistics
+      responses:
+        '200':
+          description: Количество задач по статусам
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatistics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /tasks/{taskId}:
     parameters:
       - $ref: '#/components/parameters/TaskId'
@@ -443,6 +460,26 @@ components:
           example: Спроектировать базу данных
         status:
           $ref: '#/components/schemas/TaskStatus'
+    TaskStatistics:
+      type: object
+      additionalProperties: false
+      required: [planned, started, completed]
+      properties:
+        planned:
+          type: integer
+          format: int64
+          minimum: 0
+          example: 4
+        started:
+          type: integer
+          format: int64
+          minimum: 0
+          example: 2
+        completed:
+          type: integer
+          format: int64
+          minimum: 0
+          example: 3
     TaskDetails:
       description: Полная задача с текстом заметки.
       allOf:

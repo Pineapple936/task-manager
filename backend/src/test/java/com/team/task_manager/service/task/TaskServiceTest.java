@@ -71,6 +71,18 @@ class TaskServiceTest {
     }
 
     @Test
+    void returnsAllTasksWithoutFiltersAndSorting() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        List<TaskDto> tasks = List.of(task(TASK_ID, USER_ID));
+        repository.tasks = tasks;
+        TaskSorter taskSorter = mock(TaskSorter.class);
+        TaskService service = new TaskService(repository, new TaskFilter(), taskSorter);
+
+        assertEquals(tasks, service.findAll(USER_ID));
+        verifyNoInteractions(taskSorter);
+    }
+
+    @Test
     void filtersTasksByStatusPriorityAndDeadline() {
         RecordingTaskRepository repository = new RecordingTaskRepository();
         OffsetDateTime deadlineFrom = OffsetDateTime.parse("2026-10-01T00:00:00Z");

@@ -29,6 +29,11 @@ public class TaskService {
     private final TaskSorter taskSorter;
 
     @Transactional(readOnly = true)
+    public List<TaskDto> findAll(Long userId) {
+        return taskRepository.findAllByUserId(userId);
+    }
+
+    @Transactional(readOnly = true)
     public List<TaskDto> findAll(
             Long userId,
             TaskFilterCriteria filterCriteria,
