@@ -111,6 +111,14 @@ public class JooqTaskRepository implements TaskRepository {
     }
 
     @Override
+    public boolean deleteDependency(Long taskId, Long dependencyTaskId) {
+        return dsl.deleteFrom(TASK_DEPENDENCIES)
+                .where(TASK_DEPENDENCIES.TASK_ID.eq(taskId))
+                .and(TASK_DEPENDENCIES.DEPENDS_ON_TASK_ID.eq(dependencyTaskId))
+                .execute() == 1;
+    }
+
+    @Override
     public List<Long> findDependencyIds(Long taskId) {
         return dsl.select(TASK_DEPENDENCIES.DEPENDS_ON_TASK_ID)
                 .from(TASK_DEPENDENCIES)

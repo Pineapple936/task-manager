@@ -5,6 +5,7 @@ import java.util.List;
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyCycleException;
+import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
 import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
@@ -161,6 +162,22 @@ public class TaskService {
         }
 
         taskRepository.addDependency(taskId, dependencyTaskId);
+    }
+
+    @Transactional
+    public void deleteDependency(Long taskId, Long dependencyTaskId, Long userId) {
+        taskRepository.findById(taskId)
+                .orElseThrow(() -> new TaskNotFoundException(taskId));
+
+        TaskMemberRole role = taskRepository.findMemberRole(taskId, userId)
+                .orElseThrow(() -> new TaskAccessDeniedException(taskId));
+        if (role != TaskMemberRole.owner && role != TaskMemberRole.editor) {
+            throw new TaskAccessDeniedException(taskId);
+        }
+
+        if (!taskRepository.deleteDependency(taskId, dependencyTaskId)) {
+            throw new TaskDependencyNotFoundException(taskId, dependencyTaskId);
+        }
     }
 
 }

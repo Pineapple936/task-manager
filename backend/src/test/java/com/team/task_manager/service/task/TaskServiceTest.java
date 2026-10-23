@@ -8,6 +8,7 @@ import java.util.Optional;
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyCycleException;
+import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
 import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
@@ -324,6 +325,46 @@ class TaskServiceTest {
         );
     }
 
+    @Test
+    void deletesDependencyWhenUserCanEditTask() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRole = Optional.of(TaskMemberRole.editor);
+        repository.dependencyDeleted = true;
+        TaskService service = service(repository);
+
+        service.deleteDependency(TASK_ID, 30L, USER_ID);
+
+        assertEquals(TASK_ID, repository.deletedDependencyTaskId);
+        assertEquals(30L, repository.deletedDependencyId);
+    }
+
+    @Test
+    void rejectsDeletingMissingDependency() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRole = Optional.of(TaskMemberRole.owner);
+        TaskService service = service(repository);
+
+        assertThrows(
+                TaskDependencyNotFoundException.class,
+                () -> service.deleteDependency(TASK_ID, 30L, USER_ID)
+        );
+    }
+
+    @Test
+    void rejectsDeletingDependencyWhenUserCannotEditTask() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRole = Optional.of(TaskMemberRole.viewer);
+        TaskService service = service(repository);
+
+        assertThrows(
+                TaskAccessDeniedException.class,
+                () -> service.deleteDependency(TASK_ID, 30L, USER_ID)
+        );
+    }
+
     private static TaskDto task(Long id, Long createdByUserId) {
         return new TaskDto(id, createdByUserId, "Task", "Description", 1, null, null, null, null);
     }
@@ -372,6 +413,9 @@ class TaskServiceTest {
         private List<List<Long>> dependencyEdges = List.of();
         private Long dependencyTaskId;
         private Long addedDependencyTaskId;
+        private boolean dependencyDeleted;
+        private Long deletedDependencyTaskId;
+        private Long deletedDependencyId;
         private Long missingTaskId;
         private List<Long> dependencyIds = List.of();
         private List<Long> dependentIds = List.of();
@@ -421,6 +465,13 @@ class TaskServiceTest {
         public void addDependency(Long taskId, Long dependencyTaskId) {
             this.dependencyTaskId = taskId;
             this.addedDependencyTaskId = dependencyTaskId;
+        }
+
+        @Override
+        public boolean deleteDependency(Long taskId, Long dependencyTaskId) {
+            deletedDependencyTaskId = taskId;
+            deletedDependencyId = dependencyTaskId;
+            return dependencyDeleted;
         }
 
         @Override

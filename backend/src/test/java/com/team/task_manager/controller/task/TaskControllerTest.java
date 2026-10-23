@@ -28,6 +28,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -179,5 +180,13 @@ class TaskControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(taskService).addDependency(20L, 30L, USER_ID);
+    }
+
+    @Test
+    void deletesTaskDependencyForAuthenticatedUser() throws Exception {
+        mockMvc.perform(delete("/tasks/20/dependencies/30"))
+                .andExpect(status().isNoContent());
+
+        verify(taskService).deleteDependency(20L, 30L, USER_ID);
     }
 }

@@ -8,6 +8,7 @@ import com.team.task_manager.controller.error.exception.task.InvalidTaskFilterEx
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyCycleException;
+import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
 import com.team.task_manager.controller.error.entity.response.ErrorResponse;
@@ -73,6 +74,16 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT.value(),
                 "TASK_DEPENDENCY_CYCLE",
                 "Зависимость создаёт цикл"
+        );
+    }
+
+    @ExceptionHandler(TaskDependencyNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleTaskDependencyNotFound(TaskDependencyNotFoundException exception) {
+        return new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "TASK_DEPENDENCY_NOT_FOUND",
+                "Зависимость между задачами не найдена"
         );
     }
 
