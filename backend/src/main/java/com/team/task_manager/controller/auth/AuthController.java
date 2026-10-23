@@ -5,7 +5,7 @@ import com.team.task_manager.controller.auth.entity.request.LoginRequest;
 import com.team.task_manager.controller.auth.entity.request.RegisterRequest;
 import com.team.task_manager.controller.auth.entity.response.UserResponse;
 import com.team.task_manager.service.security.entity.AuthenticatedUser;
-import com.team.task_manager.service.auth.AuthService;
+import com.team.task_manager.service.security.auth.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;

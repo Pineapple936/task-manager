@@ -3,7 +3,7 @@ package com.team.task_manager.controller.auth;
 import com.team.task_manager.controller.auth.entity.AuthMapper;
 import com.team.task_manager.controller.auth.entity.request.LoginRequest;
 import com.team.task_manager.service.security.entity.AuthenticatedUser;
-import com.team.task_manager.service.auth.AuthService;
+import com.team.task_manager.service.security.auth.AuthService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;

@@ -6,7 +6,8 @@ import java.util.Optional;
 import com.team.task_manager.controller.error.exception.auth.UsernameAlreadyExistsException;
 import com.team.task_manager.repository.user.UserRepository;
 import com.team.task_manager.repository.user.entity.UserDto;
-import com.team.task_manager.service.auth.entity.CredentialsDto;
+import com.team.task_manager.service.security.auth.AuthService;
+import com.team.task_manager.service.security.auth.entity.CredentialsDto;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 

@@ -6,7 +6,7 @@ import com.team.task_manager.controller.task.entity.request.CreateTaskRequest;
 import com.team.task_manager.controller.task.entity.request.UpdateTaskRequest;
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
-import com.team.task_manager.service.task.entity.TaskUpdateDto;
+import com.team.task_manager.repository.task.entity.TaskUpdateDto;
 import org.junit.jupiter.api.Test;
 import org.openapitools.jackson.nullable.JsonNullable;
 

@@ -6,7 +6,7 @@ import com.team.task_manager.controller.task.entity.response.TaskDetailsResponse
 import com.team.task_manager.controller.task.entity.response.TaskListItemResponse;
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
-import com.team.task_manager.service.task.entity.TaskUpdateDto;
+import com.team.task_manager.repository.task.entity.TaskUpdateDto;
 import org.springframework.stereotype.Component;
 
 @Component

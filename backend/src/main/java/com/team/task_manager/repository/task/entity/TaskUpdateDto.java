@@ -1,4 +1,4 @@
-package com.team.task_manager.service.task.entity;
+package com.team.task_manager.repository.task.entity;
 
 import java.time.OffsetDateTime;
 

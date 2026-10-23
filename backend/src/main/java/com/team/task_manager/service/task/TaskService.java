@@ -7,7 +7,7 @@ import com.team.task_manager.controller.error.exception.task.TaskNotFoundExcepti
 import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.repository.task.entity.TaskDto;
-import com.team.task_manager.service.task.entity.TaskUpdateDto;
+import com.team.task_manager.repository.task.entity.TaskUpdateDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

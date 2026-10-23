@@ -1,9 +1,9 @@
-package com.team.task_manager.service.auth;
+package com.team.task_manager.service.security.auth;
 
 import com.team.task_manager.controller.error.exception.auth.UsernameAlreadyExistsException;
 import com.team.task_manager.repository.user.UserRepository;
 import com.team.task_manager.repository.user.entity.UserDto;
-import com.team.task_manager.service.auth.entity.CredentialsDto;
+import com.team.task_manager.service.security.auth.entity.CredentialsDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
