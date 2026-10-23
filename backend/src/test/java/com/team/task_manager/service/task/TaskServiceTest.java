@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class TaskServiceTest {
     private static final Long USER_ID = 10L;
@@ -47,18 +49,20 @@ class TaskServiceTest {
         RecordingTaskRepository repository = new RecordingTaskRepository();
         List<TaskDto> tasks = List.of(task(TASK_ID, USER_ID));
         repository.tasks = tasks;
-        TaskService service = service(repository);
+        TaskSorter taskSorter = mock(TaskSorter.class);
+        TaskService service = new TaskService(repository, new TaskFilter(), taskSorter);
 
         assertEquals(
                 tasks,
                 service.findAll(
                         USER_ID,
                         new TaskFilterCriteria(null, null, null, null),
-                        TaskSortField.NAME,
+                        null,
                         SortDirection.ASC,
                         SortAlgorithm.MERGE
                 )
         );
+        verifyNoInteractions(taskSorter);
     }
 
     @Test

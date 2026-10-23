@@ -71,6 +71,29 @@ class TaskControllerTest {
     }
 
     @Test
+    void doesNotRequestSortingWhenSortFieldIsMissing() throws Exception {
+        TaskFilterCriteria emptyFilter = new TaskFilterCriteria(null, null, null, null);
+        when(taskService.findAll(
+                USER_ID,
+                emptyFilter,
+                null,
+                SortDirection.ASC,
+                SortAlgorithm.MERGE
+        )).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/tasks"))
+                .andExpect(status().isOk());
+
+        verify(taskService).findAll(
+                USER_ID,
+                emptyFilter,
+                null,
+                SortDirection.ASC,
+                SortAlgorithm.MERGE
+        );
+    }
+
+    @Test
     void passesFiltersAndSortingToService() throws Exception {
         OffsetDateTime deadlineFrom = OffsetDateTime.parse("2026-10-01T00:00:00Z");
         OffsetDateTime deadlineTo = OffsetDateTime.parse("2026-10-31T23:59:59Z");

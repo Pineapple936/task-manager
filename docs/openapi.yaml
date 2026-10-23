@@ -89,13 +89,18 @@ paths:
   /tasks:
     get:
       summary: Получить список задач
+      description: |
+        Все фильтры необязательные. Если задана граница дедлайна, задачи без дедлайна исключаются.
+        Сортировка применяется только при переданном параметре `sortBy`.
       operationId: getTasks
       parameters:
         - $ref: '#/components/parameters/StatusFilter'
         - $ref: '#/components/parameters/PriorityFilter'
-        - $ref: '#/components/parameters/SearchFilter'
+        - $ref: '#/components/parameters/DeadlineFromFilter'
+        - $ref: '#/components/parameters/DeadlineToFilter'
         - $ref: '#/components/parameters/SortBy'
         - $ref: '#/components/parameters/SortDirection'
+        - $ref: '#/components/parameters/SortAlgorithm'
       responses:
         '200':
           description: Список задач
@@ -105,6 +110,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/TaskListItem'
+        '400':
+          $ref: '#/components/responses/ValidationError'
     post:
       summary: Создать задачу
       operationId: createTask
@@ -197,14 +204,25 @@ components:
       description: Фильтр по приоритету
       schema:
         type: integer
-    SearchFilter:
-      name: search
+        minimum: 1
+    DeadlineFromFilter:
+      name: deadlineFrom
       in: query
       required: false
-      description: Поиск по названию задачи
+      description: Нижняя граница дедлайна включительно
       schema:
         type: string
-        minLength: 1
+        format: date-time
+        example: '2026-10-01T00:00:00Z'
+    DeadlineToFilter:
+      name: deadlineTo
+      in: query
+      required: false
+      description: Верхняя граница дедлайна включительно
+      schema:
+        type: string
+        format: date-time
+        example: '2026-10-31T23:59:59Z'
     SortBy:
       name: sortBy
       in: query
@@ -212,17 +230,25 @@ components:
       description: Поле сортировки
       schema:
         type: string
-        enum: [priority, deadline, name]
-        default: priority
+        enum: [PRIORITY, DEADLINE, NAME]
     SortDirection:
       name: direction
       in: query
       required: false
-      description: Направление сортировки
+      description: Направление сортировки, используется только вместе с sortBy
       schema:
         type: string
-        enum: [asc, desc]
-        default: desc
+        enum: [ASC, DESC]
+        default: ASC
+    SortAlgorithm:
+      name: algorithm
+      in: query
+      required: false
+      description: Алгоритм сортировки, используется только вместе с sortBy
+      schema:
+        type: string
+        enum: [QUICK, INSERTION, MERGE]
+        default: MERGE
   schemas:
     RegisterRequest:
       type: object

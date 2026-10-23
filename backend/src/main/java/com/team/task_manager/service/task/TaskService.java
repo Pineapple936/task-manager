@@ -36,6 +36,10 @@ public class TaskService {
                 filterCriteria
         );
 
+        if (sortField == null) {
+            return filteredTasks;
+        }
+
         return taskSorter.sort(filteredTasks, sortAlgorithm, sortField, sortDirection);
     }
 

@@ -51,7 +51,7 @@ public class TaskController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime deadlineFrom,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime deadlineTo,
-            @RequestParam(defaultValue = "NAME") TaskSortField sortBy,
+            @RequestParam(required = false) TaskSortField sortBy,
             @RequestParam(defaultValue = "ASC") SortDirection direction,
             @RequestParam(defaultValue = "MERGE") SortAlgorithm algorithm
     ) {
