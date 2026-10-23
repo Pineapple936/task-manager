@@ -1,8 +1,12 @@
 package com.team.task_manager.controller.statistics.entity.response;
 
+import java.util.Map;
+
 public record TaskStatisticsResponse(
-        long planned,
+        long total,
+        long completed,
         long started,
-        long completed
+        long planned,
+        Map<Integer, Long> priorityDistribution
 ) {
 }

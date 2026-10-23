@@ -1,6 +1,9 @@
 package com.team.task_manager.service.statistics;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.team.task_manager.repository.task.entity.TaskDto;
 import com.team.task_manager.service.statistics.entity.TaskStatisticsDto;
@@ -21,6 +24,10 @@ public class StatisticsService {
         long planned = 0;
         long started = 0;
         long completed = 0;
+        Map<Integer, Long> priorityDistribution = new LinkedHashMap<>();
+        for (int priority = 0; priority <= 10; priority++) {
+            priorityDistribution.put(priority, 0L);
+        }
 
         for (TaskDto task : tasks) {
             switch (task.status()) {
@@ -28,8 +35,18 @@ public class StatisticsService {
                 case started -> started++;
                 case completed -> completed++;
             }
+            priorityDistribution.put(
+                    task.priority(),
+                    priorityDistribution.get(task.priority()) + 1
+            );
         }
 
-        return new TaskStatisticsDto(planned, started, completed);
+        return new TaskStatisticsDto(
+                tasks.size(),
+                completed,
+                started,
+                planned,
+                priorityDistribution
+        );
     }
 }

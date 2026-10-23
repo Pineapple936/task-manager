@@ -1,8 +1,12 @@
 package com.team.task_manager.service.statistics.entity;
 
+import java.util.Map;
+
 public record TaskStatisticsDto(
-        long planned,
+        long total,
+        long completed,
         long started,
-        long completed
+        long planned,
+        Map<Integer, Long> priorityDistribution
 ) {
 }

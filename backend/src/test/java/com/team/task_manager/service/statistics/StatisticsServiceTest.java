@@ -29,9 +29,21 @@ class StatisticsServiceTest {
 
         TaskStatisticsDto statistics = statisticsService.getStatistics(USER_ID);
 
-        assertEquals(2, statistics.planned());
-        assertEquals(1, statistics.started());
+        assertEquals(4, statistics.total());
         assertEquals(1, statistics.completed());
+        assertEquals(1, statistics.started());
+        assertEquals(2, statistics.planned());
+        assertEquals(4, statistics.priorityDistribution().get(0));
+        assertEquals(0, statistics.priorityDistribution().get(10));
+        assertEquals(11, statistics.priorityDistribution().size());
+        assertEquals(
+                statistics.total(),
+                statistics.completed() + statistics.started() + statistics.planned()
+        );
+        assertEquals(
+                statistics.total(),
+                statistics.priorityDistribution().values().stream().mapToLong(Long::longValue).sum()
+        );
         verify(taskService).findAll(USER_ID);
     }
 
@@ -43,9 +55,15 @@ class StatisticsServiceTest {
 
         TaskStatisticsDto statistics = statisticsService.getStatistics(USER_ID);
 
-        assertEquals(0, statistics.planned());
-        assertEquals(0, statistics.started());
+        assertEquals(0, statistics.total());
         assertEquals(0, statistics.completed());
+        assertEquals(0, statistics.started());
+        assertEquals(0, statistics.planned());
+        assertEquals(11, statistics.priorityDistribution().size());
+        assertEquals(
+                0,
+                statistics.priorityDistribution().values().stream().mapToLong(Long::longValue).sum()
+        );
     }
 
     private static TaskDto task(Long id, TaskStatus status) {

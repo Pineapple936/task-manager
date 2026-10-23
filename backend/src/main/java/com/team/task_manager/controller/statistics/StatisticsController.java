@@ -22,9 +22,11 @@ public class StatisticsController {
     ) {
         TaskStatisticsDto statistics = statisticsService.getStatistics(user.id());
         return new TaskStatisticsResponse(
-                statistics.planned(),
+                statistics.total(),
+                statistics.completed(),
                 statistics.started(),
-                statistics.completed()
+                statistics.planned(),
+                statistics.priorityDistribution()
         );
     }
 }

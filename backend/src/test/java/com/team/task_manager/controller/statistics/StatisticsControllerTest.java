@@ -1,5 +1,7 @@
 package com.team.task_manager.controller.statistics;
 
+import java.util.Map;
+
 import com.team.task_manager.controller.error.GlobalExceptionHandler;
 import com.team.task_manager.service.security.entity.AuthenticatedUser;
 import com.team.task_manager.service.statistics.StatisticsService;
@@ -48,14 +50,17 @@ class StatisticsControllerTest {
     @Test
     void returnsStatisticsForAuthenticatedUser() throws Exception {
         when(statisticsService.getStatistics(USER_ID)).thenReturn(
-                new TaskStatisticsDto(2, 1, 3)
+                new TaskStatisticsDto(6, 3, 1, 2, Map.of(0, 1L, 10, 5L))
         );
 
         mockMvc.perform(get("/statistics/task"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.planned").value(2))
+                .andExpect(jsonPath("$.total").value(6))
+                .andExpect(jsonPath("$.completed").value(3))
                 .andExpect(jsonPath("$.started").value(1))
-                .andExpect(jsonPath("$.completed").value(3));
+                .andExpect(jsonPath("$.planned").value(2))
+                .andExpect(jsonPath("$.priorityDistribution.0").value(1))
+                .andExpect(jsonPath("$.priorityDistribution.10").value(5));
 
         verify(statisticsService).getStatistics(USER_ID);
     }
