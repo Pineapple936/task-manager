@@ -1,7 +1,9 @@
 package com.team.task_manager.controller.task;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
+import com.team.task_manager.controller.task.entity.TaskApiStatus;
 import com.team.task_manager.controller.task.entity.TaskMapper;
 import com.team.task_manager.controller.task.entity.request.CreateTaskRequest;
 import com.team.task_manager.controller.task.entity.request.UpdateTaskRequest;
@@ -9,9 +11,15 @@ import com.team.task_manager.controller.task.entity.response.TaskDetailsResponse
 import com.team.task_manager.controller.task.entity.response.TaskListItemResponse;
 import com.team.task_manager.service.security.entity.AuthenticatedUser;
 import com.team.task_manager.service.task.TaskService;
+import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
+import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
+import com.team.task_manager.service.task.entity.sort.SortDirection;
+import com.team.task_manager.service.task.entity.sort.TaskSortField;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
@@ -22,6 +30,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,8 +43,30 @@ public class TaskController {
     private final TaskMapper taskMapper;
 
     @GetMapping
-    public List<TaskListItemResponse> findAll(@AuthenticationPrincipal AuthenticatedUser user) {
-        return taskService.findAll(user.id()).stream()
+    public List<TaskListItemResponse> findAll(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @RequestParam(required = false) TaskApiStatus status,
+            @RequestParam(required = false) @Positive Integer priority,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime deadlineFrom,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime deadlineTo,
+            @RequestParam(defaultValue = "NAME") TaskSortField sortBy,
+            @RequestParam(defaultValue = "ASC") SortDirection direction,
+            @RequestParam(defaultValue = "MERGE") SortAlgorithm algorithm
+    ) {
+        return taskService.findAll(
+                        user.id(),
+                        new TaskFilterCriteria(
+                                taskMapper.toDatabaseStatus(status),
+                                priority,
+                                deadlineFrom,
+                                deadlineTo
+                        ),
+                        sortBy,
+                        direction,
+                        algorithm
+                ).stream()
                 .map(taskMapper::toListItemResponse)
                 .toList();
     }

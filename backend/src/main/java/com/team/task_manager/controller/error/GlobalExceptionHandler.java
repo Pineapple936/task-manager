@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.team.task_manager.controller.error.exception.auth.UsernameAlreadyExistsException;
+import com.team.task_manager.controller.error.exception.task.InvalidTaskFilterException;
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
 import com.team.task_manager.controller.error.entity.response.ErrorResponse;
@@ -29,6 +30,16 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 "VALIDATION_ERROR",
                 "Переданы некорректные данные"
+        );
+    }
+
+    @ExceptionHandler(InvalidTaskFilterException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleInvalidTaskFilter(InvalidTaskFilterException exception) {
+        return new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "INVALID_TASK_FILTER",
+                exception.getMessage()
         );
     }
 

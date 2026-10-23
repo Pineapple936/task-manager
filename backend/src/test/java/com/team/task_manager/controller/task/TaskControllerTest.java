@@ -8,6 +8,10 @@ import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
 import com.team.task_manager.service.security.entity.AuthenticatedUser;
 import com.team.task_manager.service.task.TaskService;
+import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
+import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
+import com.team.task_manager.service.task.entity.sort.SortDirection;
+import com.team.task_manager.service.task.entity.sort.TaskSortField;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +28,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -61,6 +66,49 @@ class TaskControllerTest {
                         .content("{\"name\":\"\",\"priority\":5}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(taskService);
+    }
+
+    @Test
+    void passesFiltersAndSortingToService() throws Exception {
+        OffsetDateTime deadlineFrom = OffsetDateTime.parse("2026-10-01T00:00:00Z");
+        OffsetDateTime deadlineTo = OffsetDateTime.parse("2026-10-31T23:59:59Z");
+
+        when(taskService.findAll(
+                USER_ID,
+                new TaskFilterCriteria(TaskStatus.planned, 3, deadlineFrom, deadlineTo),
+                TaskSortField.DEADLINE,
+                SortDirection.DESC,
+                SortAlgorithm.QUICK
+        )).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/tasks")
+                        .queryParam("status", "planned")
+                        .queryParam("priority", "3")
+                        .queryParam("deadlineFrom", deadlineFrom.toString())
+                        .queryParam("deadlineTo", deadlineTo.toString())
+                        .queryParam("sortBy", "DEADLINE")
+                        .queryParam("direction", "DESC")
+                        .queryParam("algorithm", "QUICK"))
+                .andExpect(status().isOk());
+
+        verify(taskService).findAll(
+                USER_ID,
+                new TaskFilterCriteria(TaskStatus.planned, 3, deadlineFrom, deadlineTo),
+                TaskSortField.DEADLINE,
+                SortDirection.DESC,
+                SortAlgorithm.QUICK
+        );
+    }
+
+    @Test
+    void rejectsInvalidDeadlineRange() throws Exception {
+        mockMvc.perform(get("/tasks")
+                        .queryParam("deadlineFrom", "2026-10-31T00:00:00Z")
+                        .queryParam("deadlineTo", "2026-10-01T00:00:00Z"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_TASK_FILTER"));
 
         verifyNoInteractions(taskService);
     }

@@ -8,6 +8,10 @@ import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.repository.task.entity.TaskDto;
 import com.team.task_manager.repository.task.entity.TaskUpdateDto;
+import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
+import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
+import com.team.task_manager.service.task.entity.sort.SortDirection;
+import com.team.task_manager.service.task.entity.sort.TaskSortField;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,10 +20,23 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class TaskService {
     private final TaskRepository taskRepository;
+    private final TaskFilter taskFilter;
+    private final TaskSorter taskSorter;
 
     @Transactional(readOnly = true)
-    public List<TaskDto> findAll(Long userId) {
-        return taskRepository.findAllByUserId(userId);
+    public List<TaskDto> findAll(
+            Long userId,
+            TaskFilterCriteria filterCriteria,
+            TaskSortField sortField,
+            SortDirection sortDirection,
+            SortAlgorithm sortAlgorithm
+    ) {
+        List<TaskDto> filteredTasks = taskFilter.filter(
+                taskRepository.findAllByUserId(userId),
+                filterCriteria
+        );
+
+        return taskSorter.sort(filteredTasks, sortAlgorithm, sortField, sortDirection);
     }
 
     @Transactional(readOnly = true)

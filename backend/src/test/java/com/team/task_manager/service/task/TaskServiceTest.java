@@ -1,14 +1,20 @@
 package com.team.task_manager.service.task;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
 import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
+import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.repository.task.entity.TaskDto;
 import com.team.task_manager.repository.task.entity.TaskUpdateDto;
+import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
+import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
+import com.team.task_manager.service.task.entity.sort.SortDirection;
+import com.team.task_manager.service.task.entity.sort.TaskSortField;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,7 +31,7 @@ class TaskServiceTest {
         RecordingTaskRepository repository = new RecordingTaskRepository();
         TaskDto createdTask = task(TASK_ID, USER_ID);
         repository.createdTask = createdTask;
-        TaskService service = new TaskService(repository);
+        TaskService service = service(repository);
 
         TaskDto result = service.create(task(null, 999L), USER_ID);
 
@@ -41,9 +47,49 @@ class TaskServiceTest {
         RecordingTaskRepository repository = new RecordingTaskRepository();
         List<TaskDto> tasks = List.of(task(TASK_ID, USER_ID));
         repository.tasks = tasks;
-        TaskService service = new TaskService(repository);
+        TaskService service = service(repository);
 
-        assertSame(tasks, service.findAll(USER_ID));
+        assertEquals(
+                tasks,
+                service.findAll(
+                        USER_ID,
+                        new TaskFilterCriteria(null, null, null, null),
+                        TaskSortField.NAME,
+                        SortDirection.ASC,
+                        SortAlgorithm.MERGE
+                )
+        );
+    }
+
+    @Test
+    void filtersTasksByStatusPriorityAndDeadline() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        OffsetDateTime deadlineFrom = OffsetDateTime.parse("2026-10-01T00:00:00Z");
+        OffsetDateTime deadlineTo = OffsetDateTime.parse("2026-10-31T23:59:59Z");
+        TaskDto expectedTask = task(
+                TASK_ID,
+                USER_ID,
+                TaskStatus.planned,
+                3,
+                OffsetDateTime.parse("2026-10-15T12:00:00Z")
+        );
+        repository.tasks = List.of(
+                expectedTask,
+                task(21L, USER_ID, TaskStatus.started, 3, expectedTask.deadline()),
+                task(22L, USER_ID, TaskStatus.planned, 1, expectedTask.deadline()),
+                task(23L, USER_ID, TaskStatus.planned, 3, null),
+                task(24L, USER_ID, TaskStatus.planned, 3, OffsetDateTime.parse("2026-11-01T00:00:00Z"))
+        );
+
+        List<TaskDto> result = service(repository).findAll(
+                USER_ID,
+                new TaskFilterCriteria(TaskStatus.planned, 3, deadlineFrom, deadlineTo),
+                TaskSortField.PRIORITY,
+                SortDirection.ASC,
+                SortAlgorithm.INSERTION
+        );
+
+        assertEquals(List.of(expectedTask), result);
     }
 
     @Test
@@ -52,14 +98,14 @@ class TaskServiceTest {
         TaskDto task = task(TASK_ID, USER_ID);
         repository.task = Optional.of(task);
         repository.memberRole = Optional.of(TaskMemberRole.viewer);
-        TaskService service = new TaskService(repository);
+        TaskService service = service(repository);
 
         assertSame(task, service.findById(TASK_ID, USER_ID));
     }
 
     @Test
     void throwsWhenTaskIsMissing() {
-        TaskService service = new TaskService(new RecordingTaskRepository());
+        TaskService service = service(new RecordingTaskRepository());
 
         assertThrows(TaskNotFoundException.class, () -> service.findById(TASK_ID, USER_ID));
     }
@@ -68,7 +114,7 @@ class TaskServiceTest {
     void throwsWhenTaskViewIsNotAllowed() {
         RecordingTaskRepository repository = new RecordingTaskRepository();
         repository.task = Optional.of(task(TASK_ID, USER_ID));
-        TaskService service = new TaskService(repository);
+        TaskService service = service(repository);
 
         assertThrows(TaskAccessDeniedException.class, () -> service.findById(TASK_ID, USER_ID));
     }
@@ -78,14 +124,14 @@ class TaskServiceTest {
         RecordingTaskRepository repository = new RecordingTaskRepository();
         repository.task = Optional.of(task(TASK_ID, USER_ID));
         repository.memberRole = Optional.of(TaskMemberRole.viewer);
-        TaskService service = new TaskService(repository);
+        TaskService service = service(repository);
 
         assertThrows(TaskAccessDeniedException.class, () -> service.update(TASK_ID, update(), USER_ID));
     }
 
     @Test
     void throwsWhenUpdatedTaskIsMissing() {
-        TaskService service = new TaskService(new RecordingTaskRepository());
+        TaskService service = service(new RecordingTaskRepository());
 
         assertThrows(TaskNotFoundException.class, () -> service.update(TASK_ID, update(), USER_ID));
     }
@@ -97,7 +143,7 @@ class TaskServiceTest {
         repository.task = Optional.of(task);
         repository.memberRole = Optional.of(TaskMemberRole.editor);
         repository.updatedTask = Optional.of(task);
-        TaskService service = new TaskService(repository);
+        TaskService service = service(repository);
 
         assertSame(task, service.update(TASK_ID, update(), USER_ID));
         assertEquals("Task", repository.taskToUpdate.name());
@@ -120,7 +166,7 @@ class TaskServiceTest {
         repository.task = Optional.of(existingTask);
         repository.memberRole = Optional.of(TaskMemberRole.owner);
         repository.updatedTask = Optional.of(existingTask);
-        TaskService service = new TaskService(repository);
+        TaskService service = service(repository);
 
         service.update(
                 TASK_ID,
@@ -138,14 +184,14 @@ class TaskServiceTest {
         RecordingTaskRepository repository = new RecordingTaskRepository();
         repository.task = Optional.of(task(TASK_ID, USER_ID));
         repository.memberRole = Optional.of(TaskMemberRole.editor);
-        TaskService service = new TaskService(repository);
+        TaskService service = service(repository);
 
         assertThrows(TaskAccessDeniedException.class, () -> service.delete(TASK_ID, USER_ID));
     }
 
     @Test
     void throwsWhenDeletedTaskIsMissing() {
-        TaskService service = new TaskService(new RecordingTaskRepository());
+        TaskService service = service(new RecordingTaskRepository());
 
         assertThrows(TaskNotFoundException.class, () -> service.delete(TASK_ID, USER_ID));
     }
@@ -156,7 +202,7 @@ class TaskServiceTest {
         repository.task = Optional.of(task(TASK_ID, USER_ID));
         repository.memberRole = Optional.of(TaskMemberRole.owner);
         repository.deleted = true;
-        TaskService service = new TaskService(repository);
+        TaskService service = service(repository);
 
         service.delete(TASK_ID, USER_ID);
 
@@ -165,6 +211,30 @@ class TaskServiceTest {
 
     private static TaskDto task(Long id, Long createdByUserId) {
         return new TaskDto(id, createdByUserId, "Task", "Description", 1, null, null, null, null);
+    }
+
+    private static TaskDto task(
+            Long id,
+            Long createdByUserId,
+            TaskStatus status,
+            Integer priority,
+            OffsetDateTime deadline
+    ) {
+        return new TaskDto(id, createdByUserId, "Task", "Description", priority, status, deadline, null, null);
+    }
+
+    private static TaskService service(RecordingTaskRepository repository) {
+        return new TaskService(repository, new TaskFilter(), new TaskSorter() {
+            @Override
+            public List<TaskDto> sort(
+                    List<TaskDto> tasks,
+                    SortAlgorithm algorithm,
+                    TaskSortField field,
+                    SortDirection direction
+            ) {
+                return tasks;
+            }
+        });
     }
 
     private static TaskUpdateDto update() {

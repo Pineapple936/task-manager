@@ -60,7 +60,7 @@ public class TaskMapper {
         );
     }
 
-    private static TaskStatus toDatabaseStatus(TaskApiStatus status) {
+    public TaskStatus toDatabaseStatus(TaskApiStatus status) {
         if (status == null) {
             return null;
         }
