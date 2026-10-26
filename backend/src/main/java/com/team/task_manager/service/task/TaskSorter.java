@@ -25,10 +25,45 @@ public class TaskSorter {
             TaskSortField field,
             SortDirection direction
     ) {
-        return List.of();
+        if (tasks == null || tasks.isEmpty()) {
+            return List.of();
+        }
+
+        Comparator<TaskDto> comparator = createComparator(field, direction);
+
+        switch (algorithm) {
+            case QUICK:
+                return quickSorter.sort(tasks, comparator);
+            case MERGE:
+                return mergeSorter.sort(tasks, comparator);
+            case INSERTION:
+                return insertionSorter.sort(tasks, comparator);
+            default:
+                throw new IllegalArgumentException("Неизвестный алгоритм: " + algorithm);
+        }
     }
 
     private Comparator<TaskDto> createComparator(TaskSortField field, SortDirection direction) {
-        return null;
+        Comparator<TaskDto> comparator;
+        switch (field) {
+            case NAME:
+                comparator = Comparator.comparing(TaskDto::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+                break;
+            case PRIORITY:
+                comparator = Comparator.comparing(TaskDto::getPriority, Comparator.nullsLast(Comparator.naturalOrder()));
+                break;
+            case DEADLINE:
+                comparator = Comparator.comparing(TaskDto::getDueDate, Comparator.nullsLast(Comparator.naturalOrder()));
+                break;
+            default:
+                throw new IllegalArgumentException("Неизвестное поле: " + field);
+        }
+
+        if (direction == SortDirection.DESC) {
+            comparator = comparator.reversed();
+        }
+
+        return comparator;
     }
+
 }
