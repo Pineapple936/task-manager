@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.team.task_manager.controller.error.exception.sort.EmptyTaskListException;
 import com.team.task_manager.controller.error.exception.sort.NullComparatorException;
+import com.team.task_manager.controller.error.exception.sort.UnsupportedSortAlgorithmException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -183,6 +184,16 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(
             HttpStatus.BAD_REQUEST.value(),
             "NULL_COMPARATOR",
+            exception.getMessage()
+        );
+    }
+
+    @ExceptionHandler(UnsupportedSortAlgorithmException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleUnsupportedSortAlgorithmException(UnsupportedSortAlgorithmException exception) {
+        return new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            "UNSUPPORTED_SORT_ALGORITHM",
             exception.getMessage()
         );
     }

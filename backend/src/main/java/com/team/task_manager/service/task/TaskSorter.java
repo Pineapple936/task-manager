@@ -13,6 +13,9 @@ import com.team.task_manager.service.task.entity.sort.SortDirection;
 import com.team.task_manager.service.task.entity.sort.TaskSortField;
 import org.springframework.stereotype.Service;
 
+import com.team.task_manager.controller.error.exception.sort.EmptyTaskListException;
+import com.team.task_manager.controller.error.exception.sort.UnsupportedSortAlgorithmException;
+
 @Service
 public class TaskSorter {
     private final Sorter<TaskDto> quickSorter = new QuickSorter<>();
@@ -25,8 +28,11 @@ public class TaskSorter {
             TaskSortField field,
             SortDirection direction
     ) {
-        if (tasks == null || tasks.isEmpty()) {
-            return List.of();
+        if (tasks == null) {
+            throw new EmptyTaskListException("Список задач не может быть null");
+        }
+        if (tasks.isEmpty()) {
+            return tasks;
         }
 
         Comparator<TaskDto> comparator = createComparator(field, direction);
@@ -39,7 +45,7 @@ public class TaskSorter {
             case INSERTION:
                 return insertionSorter.sort(tasks, comparator);
             default:
-                throw new IllegalArgumentException("Неизвестный алгоритм: " + algorithm);
+                throw new UnsupportedSortAlgorithmException("Неизвестный алгоритм: " + algorithm);
         }
     }
 
@@ -47,13 +53,13 @@ public class TaskSorter {
         Comparator<TaskDto> comparator;
         switch (field) {
             case NAME:
-                comparator = Comparator.comparing(TaskDto::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+                comparator = Comparator.comparing(TaskDto::name, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
                 break;
             case PRIORITY:
-                comparator = Comparator.comparing(TaskDto::getPriority, Comparator.nullsLast(Comparator.naturalOrder()));
+                comparator = Comparator.comparing(TaskDto::priority, Comparator.nullsLast(Comparator.naturalOrder()));
                 break;
             case DEADLINE:
-                comparator = Comparator.comparing(TaskDto::getDueDate, Comparator.nullsLast(Comparator.naturalOrder()));
+                comparator = Comparator.comparing(TaskDto::deadline, Comparator.nullsLast(Comparator.naturalOrder()));
                 break;
             default:
                 throw new IllegalArgumentException("Неизвестное поле: " + field);
