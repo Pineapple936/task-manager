@@ -24,6 +24,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.team.task_manager.controller.error.exception.sort.EmptyTaskListException;
+import com.team.task_manager.controller.error.exception.sort.NullComparatorException;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -161,6 +164,26 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "INTERNAL_ERROR",
                 "Внутренняя ошибка сервера"
+        );
+    }
+
+    @ExceptionHandler(EmptyTaskListException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleEmptyTaskListException(EmptyTaskListException exception) {
+        return new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            "EMPTY_TASK_LIST",
+            exception.getMessage()
+        );
+    }
+
+    @ExceptionHandler(NullComparatorException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleNullComparatorException(NullComparatorException exception) {
+        return new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            "NULL_COMPARATOR",
+            exception.getMessage()
         );
     }
 }

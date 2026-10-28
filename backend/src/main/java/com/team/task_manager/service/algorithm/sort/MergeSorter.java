@@ -1,5 +1,8 @@
 package com.team.task_manager.service.algorithm.sort;
 
+import com.team.task_manager.controller.error.exception.sort.EmptyTaskListException;
+import com.team.task_manager.controller.error.exception.sort.NullComparatorException;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -8,11 +11,11 @@ public class MergeSorter<T> implements Sorter<T> {
 
     @Override
     public List<T> sort(List<T> items, Comparator<T> comparator) {
-        if (items == null) {
-            throw new IllegalArgumentException("Список задач не может быть пустым.");
+        if (items == null || items.isEmpty()) {
+            throw new EmptyTaskListException("Список задач не может быть пустым.");
         }
         if (comparator == null) {
-            throw new IllegalArgumentException("Компаратор не может быть пустым.");
+            throw new NullComparatorException("Компаратор не может быть пустым.");
         }
         // Результат сортировки
         List<T> result = new ArrayList<>(items);
