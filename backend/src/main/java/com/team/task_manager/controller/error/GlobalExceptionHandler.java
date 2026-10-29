@@ -24,6 +24,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.team.task_manager.controller.error.exception.sort.EmptyTaskListException;
+import com.team.task_manager.controller.error.exception.sort.NullComparatorException;
+import com.team.task_manager.controller.error.exception.sort.UnsupportedSortAlgorithmException;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -161,6 +165,36 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "INTERNAL_ERROR",
                 "Внутренняя ошибка сервера"
+        );
+    }
+
+    @ExceptionHandler(EmptyTaskListException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleEmptyTaskListException(EmptyTaskListException exception) {
+        return new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            "EMPTY_TASK_LIST",
+            "Список задач не может быть null"
+        );
+    }
+
+    @ExceptionHandler(NullComparatorException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleNullComparatorException(NullComparatorException exception) {
+        return new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            "NULL_COMPARATOR",
+            "Компаратор не может быть null"
+        );
+    }
+
+    @ExceptionHandler(UnsupportedSortAlgorithmException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleUnsupportedSortAlgorithmException(UnsupportedSortAlgorithmException exception) {
+        return new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            "UNSUPPORTED_SORT_ALGORITHM",
+            "Неподдерживаемый алгоритм сортировки"
         );
     }
 }
