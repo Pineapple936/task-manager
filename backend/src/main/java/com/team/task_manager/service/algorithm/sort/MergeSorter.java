@@ -20,10 +20,6 @@ public class MergeSorter<T> implements Sorter<T> {
         // Результат сортировки
         List<T> result = new ArrayList<>(items);
 
-	    if (result.size() < 2) {
-	    	return result;
-	    }
-
         List<T> buffer = new ArrayList<>(items);
         mergeSort(result, 0, result.size() - 1, comparator, buffer);
         
