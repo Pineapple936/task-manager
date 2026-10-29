@@ -29,7 +29,7 @@ public class TaskSorter {
             SortDirection direction
     ) {
         if (tasks == null) {
-            throw new EmptyTaskListException("Список задач не может быть null");
+            throw new EmptyTaskListException();
         }
         if (tasks.isEmpty()) {
             return tasks;
@@ -45,7 +45,7 @@ public class TaskSorter {
             case INSERTION:
                 return insertionSorter.sort(tasks, comparator);
             default:
-                throw new UnsupportedSortAlgorithmException("Неизвестный алгоритм: " + algorithm);
+                throw new UnsupportedSortAlgorithmException(algorithm.toString());
         }
     }
 

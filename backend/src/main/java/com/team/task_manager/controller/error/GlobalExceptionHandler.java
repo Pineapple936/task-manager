@@ -174,7 +174,7 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(
             HttpStatus.BAD_REQUEST.value(),
             "EMPTY_TASK_LIST",
-            exception.getMessage()
+            "Список задач не может быть null"
         );
     }
 
@@ -184,7 +184,7 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(
             HttpStatus.BAD_REQUEST.value(),
             "NULL_COMPARATOR",
-            exception.getMessage()
+            "Компаратор не может быть null"
         );
     }
 
@@ -194,7 +194,7 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(
             HttpStatus.BAD_REQUEST.value(),
             "UNSUPPORTED_SORT_ALGORITHM",
-            exception.getMessage()
+            "Неподдерживаемый алгоритм сортировки"
         );
     }
 }

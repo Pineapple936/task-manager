@@ -12,12 +12,13 @@ public class QuickSorter<T> implements Sorter<T> {
 
     @Override
     public List<T> sort(List<T> items, Comparator<T> comparator) {
-        if (items == null || items.isEmpty()) {
-            throw new EmptyTaskListException("Список задач не может быть пустым.");
+        if (items == null) {
+            throw new EmptyTaskListException();
         }
         if (comparator == null) {
-            throw new NullComparatorException("Компаратор не может быть пустым.");
+            throw new NullComparatorException();
         }
+        
         // Результат сортировки
         List<T> result = new ArrayList<>(items);
 
