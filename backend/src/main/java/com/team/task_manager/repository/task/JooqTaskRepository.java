@@ -165,11 +165,11 @@ public class JooqTaskRepository implements TaskRepository {
     }
 
     @Override
-    public boolean deleteTag(Long taskId, Long tagId) {
-        return dsl.deleteFrom(TASK_TAGS)
+    public void deleteTag(Long taskId, Long tagId) {
+        dsl.deleteFrom(TASK_TAGS)
                 .where(TASK_TAGS.TASK_ID.eq(taskId))
                 .and(TASK_TAGS.TAG_ID.eq(tagId))
-                .execute() == 1;
+                .execute();
     }
 
     @Override
@@ -193,10 +193,10 @@ public class JooqTaskRepository implements TaskRepository {
     }
 
     @Override
-    public boolean deleteById(Long taskId) {
-        return dsl.deleteFrom(TASKS)
+    public void deleteById(Long taskId) {
+        dsl.deleteFrom(TASKS)
                 .where(TASKS.ID.eq(taskId))
-                .execute() == 1;
+                .execute();
     }
 
     private List<TaskDto> withRelations(List<TaskDto> tasks) {

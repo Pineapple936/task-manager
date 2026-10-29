@@ -6,7 +6,6 @@ import java.util.Map;
 import com.team.task_manager.controller.error.exception.auth.UsernameAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.tag.TagNotFoundException;
 import com.team.task_manager.controller.error.exception.tag.TaskTagAlreadyExistsException;
-import com.team.task_manager.controller.error.exception.tag.TaskTagNotFoundException;
 import com.team.task_manager.controller.error.exception.task.InvalidTaskFilterException;
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
@@ -178,16 +177,6 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT.value(),
                 "TASK_TAG_ALREADY_EXISTS",
                 "Тег уже добавлен к задаче"
-        );
-    }
-
-    @ExceptionHandler(TaskTagNotFoundException.class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ErrorResponse handleTaskTagNotFound(TaskTagNotFoundException exception) {
-        return new ErrorResponse(
-                HttpStatus.NOT_FOUND.value(),
-                "TASK_TAG_NOT_FOUND",
-                "Тег не добавлен к задаче"
         );
     }
 

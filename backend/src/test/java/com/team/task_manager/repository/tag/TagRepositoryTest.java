@@ -63,7 +63,10 @@ class TagRepositoryTest {
 
         assertTrue(taskRepository.taskTagExists(task.id(), tag.id()));
         assertEquals(List.of(tag), taskRepository.findById(task.id()).orElseThrow().tags());
-        assertTrue(taskRepository.deleteTag(task.id(), tag.id()));
+        taskRepository.deleteTag(task.id(), tag.id());
+        assertFalse(taskRepository.taskTagExists(task.id(), tag.id()));
+
+        taskRepository.deleteTag(task.id(), tag.id());
         assertFalse(taskRepository.taskTagExists(task.id(), tag.id()));
     }
 }

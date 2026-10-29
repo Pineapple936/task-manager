@@ -35,9 +35,9 @@ public interface TaskRepository {
 
     void addTag(Long taskId, Long tagId);
 
-    boolean deleteTag(Long taskId, Long tagId);
+    void deleteTag(Long taskId, Long tagId);
 
     Optional<TaskDto> update(TaskDto task);
 
-    boolean deleteById(Long taskId);
+    void deleteById(Long taskId);
 }

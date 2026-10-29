@@ -232,8 +232,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/TaskNotFound'
   /tasks/{taskId}/dependencies/{dependencyTaskId}:
     parameters:
       - $ref: '#/components/parameters/TaskId'
@@ -329,7 +327,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
-          description: Задача, тег или связь между ними не найдены
+          description: Задача или тег не найдены
           content:
             application/json:
               schema:

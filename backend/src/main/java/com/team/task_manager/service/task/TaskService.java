@@ -9,7 +9,6 @@ import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFo
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
 import com.team.task_manager.controller.error.exception.tag.TaskTagAlreadyExistsException;
-import com.team.task_manager.controller.error.exception.tag.TaskTagNotFoundException;
 import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.repository.task.entity.TaskDto;
@@ -112,8 +111,9 @@ public class TaskService {
 
     @Transactional
     public void delete(Long taskId, Long userId) {
-        taskRepository.findById(taskId)
-                .orElseThrow(() -> new TaskNotFoundException(taskId));
+        if (taskRepository.findById(taskId).isEmpty()) {
+            return;
+        }
 
         TaskMemberRole role = taskRepository.findMemberRole(taskId, userId)
                 .orElseThrow(() -> new TaskAccessDeniedException(taskId));
@@ -131,9 +131,7 @@ public class TaskService {
             }
         }
 
-        if (!taskRepository.deleteById(taskId)) {
-            throw new TaskNotFoundException(taskId);
-        }
+        taskRepository.deleteById(taskId);
     }
 
     @Transactional
@@ -182,13 +180,11 @@ public class TaskService {
     }
 
     @Transactional
-    public void д(Long taskId, Long tagId, Long userId) {
+    public void deleteTag(Long taskId, Long tagId, Long userId) {
         requireTaskEditor(taskId, userId);
         tagService.findById(tagId);
 
-        if (!taskRepository.deleteTag(taskId, tagId)) {
-            throw new TaskTagNotFoundException(taskId, tagId);
-        }
+        taskRepository.deleteTag(taskId, tagId);
     }
 
     private TaskDto requireTaskEditor(Long taskId, Long userId) {

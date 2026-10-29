@@ -13,7 +13,6 @@ import com.team.task_manager.controller.error.exception.task.TaskNotFoundExcepti
 import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
 import com.team.task_manager.controller.error.exception.tag.TagNotFoundException;
 import com.team.task_manager.controller.error.exception.tag.TaskTagAlreadyExistsException;
-import com.team.task_manager.controller.error.exception.tag.TaskTagNotFoundException;
 import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.tag.TagRepository;
@@ -227,10 +226,10 @@ class TaskServiceTest {
     }
 
     @Test
-    void throwsWhenDeletedTaskIsMissing() {
+    void ignoresMissingTaskWhenDeleting() {
         TaskService service = service(new RecordingTaskRepository());
 
-        assertThrows(TaskNotFoundException.class, () -> service.delete(TASK_ID, USER_ID));
+        service.delete(TASK_ID, USER_ID);
     }
 
     @Test
@@ -240,7 +239,6 @@ class TaskServiceTest {
         repository.memberRole = Optional.of(TaskMemberRole.owner);
         repository.dependencyIds = List.of(1L, 2L);
         repository.dependentIds = List.of(30L, 40L);
-        repository.deleted = true;
         TaskService service = service(repository);
 
         service.delete(TASK_ID, USER_ID);
@@ -264,7 +262,6 @@ class TaskServiceTest {
         repository.memberRole = Optional.of(TaskMemberRole.owner);
         repository.dependencyIds = List.of(30L);
         repository.dependentIds = List.of(30L);
-        repository.deleted = true;
         TaskService service = service(repository);
 
         service.delete(TASK_ID, USER_ID);
@@ -447,7 +444,6 @@ class TaskServiceTest {
         RecordingTaskRepository taskRepository = new RecordingTaskRepository();
         taskRepository.task = Optional.of(task(TASK_ID, USER_ID));
         taskRepository.memberRole = Optional.of(TaskMemberRole.owner);
-        taskRepository.tagDeleted = true;
         RecordingTagRepository tagRepository = new RecordingTagRepository();
         tagRepository.tag = Optional.of(new TagDto(1L, "Работа"));
         TaskService service = service(taskRepository, tagRepository);
@@ -459,7 +455,7 @@ class TaskServiceTest {
     }
 
     @Test
-    void rejectsDeletingMissingTaskTag() {
+    void ignoresMissingTaskTagWhenDeleting() {
         RecordingTaskRepository taskRepository = new RecordingTaskRepository();
         taskRepository.task = Optional.of(task(TASK_ID, USER_ID));
         taskRepository.memberRole = Optional.of(TaskMemberRole.owner);
@@ -467,7 +463,10 @@ class TaskServiceTest {
         tagRepository.tag = Optional.of(new TagDto(1L, "Работа"));
         TaskService service = service(taskRepository, tagRepository);
 
-        assertThrows(TaskTagNotFoundException.class, () -> service.deleteTag(TASK_ID, 1L, USER_ID));
+        service.deleteTag(TASK_ID, 1L, USER_ID);
+
+        assertEquals(TASK_ID, taskRepository.untaggedTaskId);
+        assertEquals(1L, taskRepository.deletedTagId);
     }
 
     private static TaskDto task(Long id, Long createdByUserId) {
@@ -515,7 +514,6 @@ class TaskServiceTest {
         private Optional<TaskMemberRole> memberRole = Optional.empty();
         private TaskDto createdTask;
         private Optional<TaskDto> updatedTask = Optional.empty();
-        private boolean deleted;
         private TaskDto taskToCreate;
         private TaskDto taskToUpdate;
         private Long ownerTaskId;
@@ -535,7 +533,6 @@ class TaskServiceTest {
         private boolean taskTagExists;
         private Long taggedTaskId;
         private Long addedTagId;
-        private boolean tagDeleted;
         private Long untaggedTaskId;
         private Long deletedTagId;
 
@@ -619,10 +616,9 @@ class TaskServiceTest {
         }
 
         @Override
-        public boolean deleteTag(Long taskId, Long tagId) {
+        public void deleteTag(Long taskId, Long tagId) {
             untaggedTaskId = taskId;
             deletedTagId = tagId;
-            return tagDeleted;
         }
 
         @Override
@@ -632,9 +628,8 @@ class TaskServiceTest {
         }
 
         @Override
-        public boolean deleteById(Long taskId) {
+        public void deleteById(Long taskId) {
             deletedTaskId = taskId;
-            return deleted;
         }
     }
 
