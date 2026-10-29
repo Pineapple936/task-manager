@@ -4,7 +4,7 @@ info:
   version: 0.1.0
   description: |
     Базовый REST API менеджера задач.
-    Теги и управление участниками задач пока не входят в API-контракт.
+    Управление участниками задач пока не входит в API-контракт.
 servers:
   - url: /
 security:
@@ -84,6 +84,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /tags:
+    get:
+      summary: Получить список доступных тегов
+      description: Возвращает общий фиксированный список тегов для всех пользователей.
+      operationId: getTags
+      responses:
+        '200':
+          description: Список тегов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
         '401':
           $ref: '#/components/responses/Unauthorized'
   /tasks:
@@ -270,6 +286,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /tasks/{taskId}/tags/{tagId}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+      - $ref: '#/components/parameters/TagId'
+    post:
+      summary: Добавить тег к задаче
+      description: Операция доступна владельцу и редактору задачи.
+      operationId: addTaskTag
+      responses:
+        '204':
+          description: Тег добавлен к задаче
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Задача или тег не найдены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Тег уже добавлен к задаче
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Удалить тег у задачи
+      description: Операция доступна владельцу и редактору задачи. Сам тег из справочника не удаляется.
+      operationId: deleteTaskTag
+      responses:
+        '204':
+          description: Тег удалён у задачи
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Задача, тег или связь между ними не найдены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   securitySchemes:
     sessionCookie:
@@ -291,6 +355,15 @@ components:
       in: path
       required: true
       description: Идентификатор задачи, от которой зависит текущая задача
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    TagId:
+      name: tagId
+      in: path
+      required: true
+      description: Идентификатор тега
       schema:
         type: integer
         format: int64
@@ -404,6 +477,19 @@ components:
         В API хранятся технические английские значения.
         Пользовательский интерфейс переводит их на русский.
       enum: [planned, started, completed]
+    Tag:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          maxLength: 50
+          example: Работа
     TaskListItem:
       type: object
       description: Компактная задача для отрисовки списка без текста заметки.
@@ -415,6 +501,7 @@ components:
         - deadline
         - createdAt
         - dependencies
+        - tags
       properties:
         id:
           type: integer
@@ -446,6 +533,11 @@ components:
           description: Краткие данные задач, от которых зависит текущая задача
           items:
             $ref: '#/components/schemas/TaskDependency'
+        tags:
+          type: array
+          description: Теги, назначенные задаче
+          items:
+            $ref: '#/components/schemas/Tag'
     TaskDependency:
       type: object
       required: [id, name, status]

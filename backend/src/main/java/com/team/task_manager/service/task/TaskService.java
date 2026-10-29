@@ -8,6 +8,8 @@ import com.team.task_manager.controller.error.exception.task.TaskDependencyCycle
 import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
+import com.team.task_manager.controller.error.exception.tag.TaskTagAlreadyExistsException;
+import com.team.task_manager.controller.error.exception.tag.TaskTagNotFoundException;
 import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.repository.task.entity.TaskDto;
@@ -17,6 +19,7 @@ import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
 import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
 import com.team.task_manager.service.task.entity.sort.SortDirection;
 import com.team.task_manager.service.task.entity.sort.TaskSortField;
+import com.team.task_manager.service.tag.TagService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class TaskService {
     private final TaskRepository taskRepository;
+    private final TagService tagService;
     private final TaskFilter taskFilter;
     private final TaskSorter taskSorter;
 
@@ -86,14 +90,7 @@ public class TaskService {
 
     @Transactional
     public TaskDto update(Long taskId, TaskUpdateDto update, Long userId) {
-        TaskDto task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new TaskNotFoundException(taskId));
-
-        TaskMemberRole role = taskRepository.findMemberRole(taskId, userId)
-                .orElseThrow(() -> new TaskAccessDeniedException(taskId));
-        if (role != TaskMemberRole.owner && role != TaskMemberRole.editor) {
-            throw new TaskAccessDeniedException(taskId);
-        }
+        TaskDto task = requireTaskEditor(taskId, userId);
 
         TaskDto updatedTask = new TaskDto(
                 task.id(),
@@ -105,7 +102,8 @@ public class TaskService {
                 update.deadlineSpecified() ? update.deadline() : task.deadline(),
                 task.createdAt(),
                 task.updatedAt(),
-                task.dependencies()
+                task.dependencies(),
+                task.tags()
         );
 
         return taskRepository.update(updatedTask)
@@ -144,16 +142,9 @@ public class TaskService {
             throw new TaskSelfDependencyException();
         }
 
-        taskRepository.findById(taskId)
-                .orElseThrow(() -> new TaskNotFoundException(taskId));
+        requireTaskEditor(taskId, userId);
         taskRepository.findById(dependencyTaskId)
                 .orElseThrow(() -> new TaskNotFoundException(dependencyTaskId));
-
-        TaskMemberRole role = taskRepository.findMemberRole(taskId, userId)
-                .orElseThrow(() -> new TaskAccessDeniedException(taskId));
-        if (role != TaskMemberRole.owner && role != TaskMemberRole.editor) {
-            throw new TaskAccessDeniedException(taskId);
-        }
 
         if (taskRepository.dependencyExists(taskId, dependencyTaskId)) {
             throw new TaskDependencyAlreadyExistsException(taskId, dependencyTaskId);
@@ -171,7 +162,37 @@ public class TaskService {
 
     @Transactional
     public void deleteDependency(Long taskId, Long dependencyTaskId, Long userId) {
-        taskRepository.findById(taskId)
+        requireTaskEditor(taskId, userId);
+
+        if (!taskRepository.deleteDependency(taskId, dependencyTaskId)) {
+            throw new TaskDependencyNotFoundException(taskId, dependencyTaskId);
+        }
+    }
+
+    @Transactional
+    public void addTag(Long taskId, Long tagId, Long userId) {
+        requireTaskEditor(taskId, userId);
+        tagService.findById(tagId);
+
+        if (taskRepository.taskTagExists(taskId, tagId)) {
+            throw new TaskTagAlreadyExistsException(taskId, tagId);
+        }
+
+        taskRepository.addTag(taskId, tagId);
+    }
+
+    @Transactional
+    public void д(Long taskId, Long tagId, Long userId) {
+        requireTaskEditor(taskId, userId);
+        tagService.findById(tagId);
+
+        if (!taskRepository.deleteTag(taskId, tagId)) {
+            throw new TaskTagNotFoundException(taskId, tagId);
+        }
+    }
+
+    private TaskDto requireTaskEditor(Long taskId, Long userId) {
+        TaskDto task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new TaskNotFoundException(taskId));
 
         TaskMemberRole role = taskRepository.findMemberRole(taskId, userId)
@@ -180,9 +201,7 @@ public class TaskService {
             throw new TaskAccessDeniedException(taskId);
         }
 
-        if (!taskRepository.deleteDependency(taskId, dependencyTaskId)) {
-            throw new TaskDependencyNotFoundException(taskId, dependencyTaskId);
-        }
+        return task;
     }
 
 }

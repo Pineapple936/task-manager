@@ -4,6 +4,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.team.task_manager.controller.error.exception.auth.UsernameAlreadyExistsException;
+import com.team.task_manager.controller.error.exception.tag.TagNotFoundException;
+import com.team.task_manager.controller.error.exception.tag.TaskTagAlreadyExistsException;
+import com.team.task_manager.controller.error.exception.tag.TaskTagNotFoundException;
 import com.team.task_manager.controller.error.exception.task.InvalidTaskFilterException;
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
@@ -155,6 +158,36 @@ public class GlobalExceptionHandler {
                 HttpStatus.FORBIDDEN.value(),
                 "TASK_ACCESS_DENIED",
                 "Недостаточно прав для выполнения действия"
+        );
+    }
+
+    @ExceptionHandler(TagNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleTagNotFound(TagNotFoundException exception) {
+        return new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "TAG_NOT_FOUND",
+                "Тег не найден"
+        );
+    }
+
+    @ExceptionHandler(TaskTagAlreadyExistsException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleTaskTagAlreadyExists(TaskTagAlreadyExistsException exception) {
+        return new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                "TASK_TAG_ALREADY_EXISTS",
+                "Тег уже добавлен к задаче"
+        );
+    }
+
+    @ExceptionHandler(TaskTagNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleTaskTagNotFound(TaskTagNotFoundException exception) {
+        return new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "TASK_TAG_NOT_FOUND",
+                "Тег не добавлен к задаче"
         );
     }
 

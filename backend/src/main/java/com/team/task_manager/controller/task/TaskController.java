@@ -112,6 +112,26 @@ public class TaskController {
         taskService.deleteDependency(taskId, dependencyTaskId, user.id());
     }
 
+    @PostMapping("/{taskId}/tags/{tagId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void addTag(
+            @PathVariable @Min(value = 1, message = "Идентификатор задачи должен быть положительным") Long taskId,
+            @PathVariable @Min(value = 1, message = "Идентификатор тега должен быть положительным") Long tagId,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        taskService.addTag(taskId, tagId, user.id());
+    }
+
+    @DeleteMapping("/{taskId}/tags/{tagId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteTag(
+            @PathVariable @Min(value = 1, message = "Идентификатор задачи должен быть положительным") Long taskId,
+            @PathVariable @Min(value = 1, message = "Идентификатор тега должен быть положительным") Long tagId,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        taskService.deleteTag(taskId, tagId, user.id());
+    }
+
     @PatchMapping("/{taskId}")
     public TaskDetailsResponse update(
             @PathVariable @Min(value = 1, message = "Идентификатор задачи должен быть положительным") Long taskId,

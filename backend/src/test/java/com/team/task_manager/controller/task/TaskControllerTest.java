@@ -189,4 +189,20 @@ class TaskControllerTest {
 
         verify(taskService).deleteDependency(20L, 30L, USER_ID);
     }
+
+    @Test
+    void addsTaskTagForAuthenticatedUser() throws Exception {
+        mockMvc.perform(post("/tasks/20/tags/1"))
+                .andExpect(status().isNoContent());
+
+        verify(taskService).addTag(20L, 1L, USER_ID);
+    }
+
+    @Test
+    void deletesTaskTagForAuthenticatedUser() throws Exception {
+        mockMvc.perform(delete("/tasks/20/tags/1"))
+                .andExpect(status().isNoContent());
+
+        verify(taskService).deleteTag(20L, 1L, USER_ID);
+    }
 }

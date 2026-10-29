@@ -8,6 +8,7 @@ import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
 import com.team.task_manager.repository.task.entity.TaskDependencyDto;
 import com.team.task_manager.repository.task.entity.TaskUpdateDto;
+import com.team.task_manager.repository.tag.entity.TagDto;
 import org.junit.jupiter.api.Test;
 import org.openapitools.jackson.nullable.JsonNullable;
 
@@ -111,5 +112,28 @@ class TaskMapperTest {
         assertEquals(1, response.dependencies().size());
         assertEquals(3L, response.dependencies().getFirst().id());
         assertEquals(TaskApiStatus.completed, response.dependencies().getFirst().status());
+    }
+
+    @Test
+    void mapsTaskTagsToApiResponse() {
+        TaskDto task = new TaskDto(
+                1L,
+                2L,
+                "Task",
+                "Description",
+                5,
+                TaskStatus.planned,
+                null,
+                OffsetDateTime.now(),
+                OffsetDateTime.now(),
+                java.util.List.of(),
+                java.util.List.of(new TagDto(4L, "Важное"))
+        );
+
+        var response = mapper.toDetailsResponse(task);
+
+        assertEquals(1, response.tags().size());
+        assertEquals(4L, response.tags().getFirst().id());
+        assertEquals("Важное", response.tags().getFirst().name());
     }
 }

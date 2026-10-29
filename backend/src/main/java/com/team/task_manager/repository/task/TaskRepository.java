@@ -31,6 +31,12 @@ public interface TaskRepository {
 
     void addDependencyIfAbsent(Long taskId, Long dependencyTaskId);
 
+    boolean taskTagExists(Long taskId, Long tagId);
+
+    void addTag(Long taskId, Long tagId);
+
+    boolean deleteTag(Long taskId, Long tagId);
+
     Optional<TaskDto> update(TaskDto task);
 
     boolean deleteById(Long taskId);

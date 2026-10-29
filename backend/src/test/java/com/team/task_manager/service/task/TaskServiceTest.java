@@ -11,8 +11,13 @@ import com.team.task_manager.controller.error.exception.task.TaskDependencyCycle
 import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
+import com.team.task_manager.controller.error.exception.tag.TagNotFoundException;
+import com.team.task_manager.controller.error.exception.tag.TaskTagAlreadyExistsException;
+import com.team.task_manager.controller.error.exception.tag.TaskTagNotFoundException;
 import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
+import com.team.task_manager.repository.tag.TagRepository;
+import com.team.task_manager.repository.tag.entity.TagDto;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.repository.task.entity.TaskDto;
 import com.team.task_manager.repository.task.entity.TaskUpdateDto;
@@ -20,6 +25,7 @@ import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
 import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
 import com.team.task_manager.service.task.entity.sort.SortDirection;
 import com.team.task_manager.service.task.entity.sort.TaskSortField;
+import com.team.task_manager.service.tag.TagService;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -55,7 +61,12 @@ class TaskServiceTest {
         List<TaskDto> tasks = List.of(task(TASK_ID, USER_ID));
         repository.tasks = tasks;
         TaskSorter taskSorter = mock(TaskSorter.class);
-        TaskService service = new TaskService(repository, new TaskFilter(), taskSorter);
+        TaskService service = new TaskService(
+                repository,
+                new TagService(new RecordingTagRepository()),
+                new TaskFilter(),
+                taskSorter
+        );
 
         assertEquals(
                 tasks,
@@ -76,7 +87,12 @@ class TaskServiceTest {
         List<TaskDto> tasks = List.of(task(TASK_ID, USER_ID));
         repository.tasks = tasks;
         TaskSorter taskSorter = mock(TaskSorter.class);
-        TaskService service = new TaskService(repository, new TaskFilter(), taskSorter);
+        TaskService service = new TaskService(
+                repository,
+                new TagService(new RecordingTagRepository()),
+                new TaskFilter(),
+                taskSorter
+        );
 
         assertEquals(tasks, service.findAll(USER_ID));
         verifyNoInteractions(taskSorter);
@@ -298,6 +314,7 @@ class TaskServiceTest {
     void rejectsMissingDependencyTask() {
         RecordingTaskRepository repository = new RecordingTaskRepository();
         repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRole = Optional.of(TaskMemberRole.owner);
         repository.missingTaskId = 30L;
         TaskService service = service(repository);
 
@@ -377,6 +394,82 @@ class TaskServiceTest {
         );
     }
 
+    @Test
+    void addsTagWhenUserCanEditTask() {
+        RecordingTaskRepository taskRepository = new RecordingTaskRepository();
+        taskRepository.task = Optional.of(task(TASK_ID, USER_ID));
+        taskRepository.memberRole = Optional.of(TaskMemberRole.editor);
+        RecordingTagRepository tagRepository = new RecordingTagRepository();
+        tagRepository.tag = Optional.of(new TagDto(1L, "Работа"));
+        TaskService service = service(taskRepository, tagRepository);
+
+        service.addTag(TASK_ID, 1L, USER_ID);
+
+        assertEquals(TASK_ID, taskRepository.taggedTaskId);
+        assertEquals(1L, taskRepository.addedTagId);
+    }
+
+    @Test
+    void rejectsMissingTag() {
+        RecordingTaskRepository taskRepository = new RecordingTaskRepository();
+        taskRepository.task = Optional.of(task(TASK_ID, USER_ID));
+        taskRepository.memberRole = Optional.of(TaskMemberRole.owner);
+        TaskService service = service(taskRepository, new RecordingTagRepository());
+
+        assertThrows(TagNotFoundException.class, () -> service.addTag(TASK_ID, 1L, USER_ID));
+    }
+
+    @Test
+    void rejectsDuplicateTaskTag() {
+        RecordingTaskRepository taskRepository = new RecordingTaskRepository();
+        taskRepository.task = Optional.of(task(TASK_ID, USER_ID));
+        taskRepository.memberRole = Optional.of(TaskMemberRole.owner);
+        taskRepository.taskTagExists = true;
+        RecordingTagRepository tagRepository = new RecordingTagRepository();
+        tagRepository.tag = Optional.of(new TagDto(1L, "Работа"));
+        TaskService service = service(taskRepository, tagRepository);
+
+        assertThrows(TaskTagAlreadyExistsException.class, () -> service.addTag(TASK_ID, 1L, USER_ID));
+    }
+
+    @Test
+    void rejectsChangingTagsWhenUserIsViewer() {
+        RecordingTaskRepository taskRepository = new RecordingTaskRepository();
+        taskRepository.task = Optional.of(task(TASK_ID, USER_ID));
+        taskRepository.memberRole = Optional.of(TaskMemberRole.viewer);
+        TaskService service = service(taskRepository, new RecordingTagRepository());
+
+        assertThrows(TaskAccessDeniedException.class, () -> service.addTag(TASK_ID, 1L, USER_ID));
+    }
+
+    @Test
+    void deletesTagWhenUserCanEditTask() {
+        RecordingTaskRepository taskRepository = new RecordingTaskRepository();
+        taskRepository.task = Optional.of(task(TASK_ID, USER_ID));
+        taskRepository.memberRole = Optional.of(TaskMemberRole.owner);
+        taskRepository.tagDeleted = true;
+        RecordingTagRepository tagRepository = new RecordingTagRepository();
+        tagRepository.tag = Optional.of(new TagDto(1L, "Работа"));
+        TaskService service = service(taskRepository, tagRepository);
+
+        service.deleteTag(TASK_ID, 1L, USER_ID);
+
+        assertEquals(TASK_ID, taskRepository.untaggedTaskId);
+        assertEquals(1L, taskRepository.deletedTagId);
+    }
+
+    @Test
+    void rejectsDeletingMissingTaskTag() {
+        RecordingTaskRepository taskRepository = new RecordingTaskRepository();
+        taskRepository.task = Optional.of(task(TASK_ID, USER_ID));
+        taskRepository.memberRole = Optional.of(TaskMemberRole.owner);
+        RecordingTagRepository tagRepository = new RecordingTagRepository();
+        tagRepository.tag = Optional.of(new TagDto(1L, "Работа"));
+        TaskService service = service(taskRepository, tagRepository);
+
+        assertThrows(TaskTagNotFoundException.class, () -> service.deleteTag(TASK_ID, 1L, USER_ID));
+    }
+
     private static TaskDto task(Long id, Long createdByUserId) {
         return new TaskDto(id, createdByUserId, "Task", "Description", 1, null, null, null, null);
     }
@@ -392,7 +485,14 @@ class TaskServiceTest {
     }
 
     private static TaskService service(RecordingTaskRepository repository) {
-        return new TaskService(repository, new TaskFilter(), new TaskSorter() {
+        return service(repository, new RecordingTagRepository());
+    }
+
+    private static TaskService service(
+            RecordingTaskRepository repository,
+            RecordingTagRepository tagRepository
+    ) {
+        return new TaskService(repository, new TagService(tagRepository), new TaskFilter(), new TaskSorter() {
             @Override
             public List<TaskDto> sort(
                     List<TaskDto> tasks,
@@ -432,6 +532,12 @@ class TaskServiceTest {
         private List<Long> dependencyIds = List.of();
         private List<Long> dependentIds = List.of();
         private final List<List<Long>> addedDependenciesIfAbsent = new ArrayList<>();
+        private boolean taskTagExists;
+        private Long taggedTaskId;
+        private Long addedTagId;
+        private boolean tagDeleted;
+        private Long untaggedTaskId;
+        private Long deletedTagId;
 
         @Override
         public List<TaskDto> findAllByUserId(Long userId) {
@@ -502,6 +608,24 @@ class TaskServiceTest {
         }
 
         @Override
+        public boolean taskTagExists(Long taskId, Long tagId) {
+            return taskTagExists;
+        }
+
+        @Override
+        public void addTag(Long taskId, Long tagId) {
+            taggedTaskId = taskId;
+            addedTagId = tagId;
+        }
+
+        @Override
+        public boolean deleteTag(Long taskId, Long tagId) {
+            untaggedTaskId = taskId;
+            deletedTagId = tagId;
+            return tagDeleted;
+        }
+
+        @Override
         public Optional<TaskDto> update(TaskDto task) {
             taskToUpdate = task;
             return updatedTask;
@@ -511,6 +635,20 @@ class TaskServiceTest {
         public boolean deleteById(Long taskId) {
             deletedTaskId = taskId;
             return deleted;
+        }
+    }
+
+    private static final class RecordingTagRepository implements TagRepository {
+        private Optional<TagDto> tag = Optional.empty();
+
+        @Override
+        public List<TagDto> findAll() {
+            return tag.stream().toList();
+        }
+
+        @Override
+        public Optional<TagDto> findById(Long tagId) {
+            return tag;
         }
     }
 }

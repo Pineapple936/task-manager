@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 import com.team.task_manager.controller.task.entity.TaskApiStatus;
+import com.team.task_manager.controller.tag.entity.response.TagResponse;
 
 public record TaskListItemResponse(
         Long id,
@@ -12,6 +13,7 @@ public record TaskListItemResponse(
         TaskApiStatus status,
         OffsetDateTime deadline,
         OffsetDateTime createdAt,
-        List<TaskDependencyResponse> dependencies
+        List<TaskDependencyResponse> dependencies,
+        List<TagResponse> tags
 ) {
 }
