@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.jooq.generated.tables.records.TasksRecord;
 import com.team.task_manager.repository.task.entity.TaskDependencyDto;
 import com.team.task_manager.repository.task.entity.TaskDto;
@@ -45,15 +44,6 @@ public class JooqTaskRepository implements TaskRepository {
                 .map(task -> withDependencies(List.of(task)).getFirst());
     }
 
-    @Override
-    public Optional<TaskMemberRole> findMemberRole(Long taskId, Long userId) {
-        return dsl
-                .select(TASK_MEMBERS.ROLE)
-                .from(TASK_MEMBERS)
-                .where(TASK_MEMBERS.TASK_ID.eq(taskId))
-                .and(TASK_MEMBERS.USER_ID.eq(userId))
-                .fetchOptional(TASK_MEMBERS.ROLE);
-    }
 
     @Override
     public TaskDto create(TaskDto task) {
@@ -68,15 +58,6 @@ public class JooqTaskRepository implements TaskRepository {
                 .fetchSingle();
 
         return toDto(createdTask);
-    }
-
-    @Override
-    public void addOwner(Long taskId, Long userId) {
-        dsl.insertInto(TASK_MEMBERS)
-                .set(TASK_MEMBERS.TASK_ID, taskId)
-                .set(TASK_MEMBERS.USER_ID, userId)
-                .set(TASK_MEMBERS.ROLE, TaskMemberRole.owner)
-                .execute();
     }
 
     @Override

@@ -13,6 +13,7 @@ public record TaskDetailsResponse(
         OffsetDateTime deadline,
         OffsetDateTime createdAt,
         String description,
-        List<TaskDependencyResponse> dependencies
+        List<TaskDependencyResponse> dependencies,
+        List<TaskMemberResponse> members
 ) {
 }

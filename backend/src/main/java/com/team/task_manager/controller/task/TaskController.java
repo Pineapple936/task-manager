@@ -6,11 +6,15 @@ import java.util.List;
 import com.team.task_manager.controller.task.entity.TaskApiStatus;
 import com.team.task_manager.controller.task.entity.TaskMapper;
 import com.team.task_manager.controller.task.entity.request.CreateTaskRequest;
+import com.team.task_manager.controller.task.entity.request.AddTaskMemberRequest;
+import com.team.task_manager.controller.task.entity.request.UpdateTaskMemberRoleRequest;
 import com.team.task_manager.controller.task.entity.request.UpdateTaskRequest;
 import com.team.task_manager.controller.task.entity.response.TaskDetailsResponse;
 import com.team.task_manager.controller.task.entity.response.TaskListItemResponse;
+import com.team.task_manager.controller.task.entity.response.TaskMemberResponse;
 import com.team.task_manager.service.security.entity.AuthenticatedUser;
 import com.team.task_manager.service.task.TaskService;
+import com.team.task_manager.service.task.TaskMemberService;
 import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
 import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
 import com.team.task_manager.service.task.entity.sort.SortDirection;
@@ -40,6 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class TaskController {
     private final TaskService taskService;
+    private final TaskMemberService taskMemberService;
     private final TaskMapper taskMapper;
 
     @GetMapping
@@ -78,7 +83,10 @@ public class TaskController {
             @PathVariable @Min(value = 1, message = "Идентификатор задачи должен быть положительным") Long taskId,
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
-        return taskMapper.toDetailsResponse(taskService.findById(taskId, user.id()));
+        return taskMapper.toDetailsResponse(
+                taskService.findById(taskId, user.id()),
+                taskMemberService.findAll(taskId, user.id())
+        );
     }
 
     @PostMapping
@@ -87,9 +95,62 @@ public class TaskController {
             @Valid @RequestBody CreateTaskRequest request,
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
+        var createdTask = taskService.create(taskMapper.toCreateDto(request), user.id());
         return taskMapper.toDetailsResponse(
-                taskService.create(taskMapper.toCreateDto(request), user.id())
+                createdTask,
+                taskMemberService.findAll(createdTask.id(), user.id())
         );
+    }
+
+    @GetMapping("/{taskId}/members")
+    public List<TaskMemberResponse> findMembers(
+            @PathVariable @Min(value = 1, message = "Идентификатор задачи должен быть положительным") Long taskId,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        return taskMemberService.findAll(taskId, user.id()).stream()
+                .map(taskMapper::toMemberResponse)
+                .toList();
+    }
+
+    @PostMapping("/{taskId}/members")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void addMember(
+            @PathVariable @Min(value = 1, message = "Идентификатор задачи должен быть положительным") Long taskId,
+            @Valid @RequestBody AddTaskMemberRequest request,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        taskMemberService.add(
+                taskId,
+                request.userId(),
+                taskMapper.toDatabaseRole(request.role()),
+                user.id()
+        );
+    }
+
+    @PatchMapping("/{taskId}/members/{userId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateMemberRole(
+            @PathVariable @Min(value = 1, message = "Идентификатор задачи должен быть положительным") Long taskId,
+            @PathVariable @Min(value = 1, message = "Идентификатор пользователя должен быть положительным") Long userId,
+            @Valid @RequestBody UpdateTaskMemberRoleRequest request,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        taskMemberService.updateRole(
+                taskId,
+                userId,
+                taskMapper.toDatabaseRole(request.role()),
+                user.id()
+        );
+    }
+
+    @DeleteMapping("/{taskId}/members/{userId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteMember(
+            @PathVariable @Min(value = 1, message = "Идентификатор задачи должен быть положительным") Long taskId,
+            @PathVariable @Min(value = 1, message = "Идентификатор пользователя должен быть положительным") Long userId,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        taskMemberService.delete(taskId, userId, user.id());
     }
 
     @PostMapping("/{taskId}/dependencies/{dependencyTaskId}")
@@ -113,14 +174,13 @@ public class TaskController {
     }
 
     @PatchMapping("/{taskId}")
-    public TaskDetailsResponse update(
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void update(
             @PathVariable @Min(value = 1, message = "Идентификатор задачи должен быть положительным") Long taskId,
             @Valid @RequestBody UpdateTaskRequest request,
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
-        return taskMapper.toDetailsResponse(
-                taskService.update(taskId, taskMapper.toUpdateDto(request), user.id())
-        );
+        taskService.update(taskId, taskMapper.toUpdateDto(request), user.id());
     }
 
     @DeleteMapping("/{taskId}")

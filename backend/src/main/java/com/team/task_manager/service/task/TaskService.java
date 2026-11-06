@@ -2,13 +2,11 @@ package com.team.task_manager.service.task;
 
 import java.util.List;
 
-import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyCycleException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
-import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.repository.task.entity.TaskDto;
 import com.team.task_manager.repository.task.entity.TaskUpdateDto;
@@ -25,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class TaskService {
     private final TaskRepository taskRepository;
+    private final TaskMemberService taskMemberService;
     private final TaskFilter taskFilter;
     private final TaskSorter taskSorter;
 
@@ -58,8 +57,7 @@ public class TaskService {
         TaskDto task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        taskRepository.findMemberRole(taskId, userId)
-                .orElseThrow(() -> new TaskAccessDeniedException(taskId));
+        taskMemberService.requireAccess(taskId, userId);
 
         return task;
     }
@@ -79,7 +77,7 @@ public class TaskService {
                     null
                 )
         );
-        taskRepository.addOwner(createdTask.id(), userId);
+        taskMemberService.addOwner(createdTask.id(), userId);
 
         return createdTask;
     }
@@ -89,11 +87,7 @@ public class TaskService {
         TaskDto task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        TaskMemberRole role = taskRepository.findMemberRole(taskId, userId)
-                .orElseThrow(() -> new TaskAccessDeniedException(taskId));
-        if (role != TaskMemberRole.owner && role != TaskMemberRole.editor) {
-            throw new TaskAccessDeniedException(taskId);
-        }
+        taskMemberService.requireEditor(taskId, userId);
 
         TaskDto updatedTask = new TaskDto(
                 task.id(),
@@ -117,11 +111,7 @@ public class TaskService {
         taskRepository.findById(taskId)
                 .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        TaskMemberRole role = taskRepository.findMemberRole(taskId, userId)
-                .orElseThrow(() -> new TaskAccessDeniedException(taskId));
-        if (role != TaskMemberRole.owner) {
-            throw new TaskAccessDeniedException(taskId);
-        }
+        taskMemberService.requireOwner(taskId, userId);
 
         List<Long> dependencyIds = taskRepository.findDependencyIds(taskId);
         List<Long> dependentIds = taskRepository.findDependentIds(taskId);
@@ -149,11 +139,7 @@ public class TaskService {
         taskRepository.findById(dependencyTaskId)
                 .orElseThrow(() -> new TaskNotFoundException(dependencyTaskId));
 
-        TaskMemberRole role = taskRepository.findMemberRole(taskId, userId)
-                .orElseThrow(() -> new TaskAccessDeniedException(taskId));
-        if (role != TaskMemberRole.owner && role != TaskMemberRole.editor) {
-            throw new TaskAccessDeniedException(taskId);
-        }
+        taskMemberService.requireEditor(taskId, userId);
 
         if (taskRepository.dependencyExists(taskId, dependencyTaskId)) {
             throw new TaskDependencyAlreadyExistsException(taskId, dependencyTaskId);
@@ -174,11 +160,7 @@ public class TaskService {
         taskRepository.findById(taskId)
                 .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        TaskMemberRole role = taskRepository.findMemberRole(taskId, userId)
-                .orElseThrow(() -> new TaskAccessDeniedException(taskId));
-        if (role != TaskMemberRole.owner && role != TaskMemberRole.editor) {
-            throw new TaskAccessDeniedException(taskId);
-        }
+        taskMemberService.requireEditor(taskId, userId);
 
         if (!taskRepository.deleteDependency(taskId, dependencyTaskId)) {
             throw new TaskDependencyNotFoundException(taskId, dependencyTaskId);

@@ -5,9 +5,13 @@ import com.team.task_manager.controller.task.entity.request.UpdateTaskRequest;
 import com.team.task_manager.controller.task.entity.response.TaskDetailsResponse;
 import com.team.task_manager.controller.task.entity.response.TaskDependencyResponse;
 import com.team.task_manager.controller.task.entity.response.TaskListItemResponse;
+import com.team.task_manager.controller.task.entity.response.TaskMemberResponse;
+import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
+import com.team.task_manager.repository.task.entity.TaskMemberDto;
 import com.team.task_manager.repository.task.entity.TaskUpdateDto;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -57,6 +61,10 @@ public class TaskMapper {
     }
 
     public TaskDetailsResponse toDetailsResponse(TaskDto task) {
+        return toDetailsResponse(task, List.of());
+    }
+
+    public TaskDetailsResponse toDetailsResponse(TaskDto task, List<TaskMemberDto> members) {
         return new TaskDetailsResponse(
                 task.id(),
                 task.name(),
@@ -71,8 +79,23 @@ public class TaskMapper {
                                 dependency.name(),
                                 toApiStatus(dependency.status())
                         ))
+                        .toList(),
+                members.stream()
+                        .map(this::toMemberResponse)
                         .toList()
         );
+    }
+
+    public TaskMemberResponse toMemberResponse(TaskMemberDto member) {
+        return new TaskMemberResponse(
+                member.userId(),
+                member.username(),
+                TaskMemberApiRole.valueOf(member.role().getLiteral())
+        );
+    }
+
+    public TaskMemberRole toDatabaseRole(TaskMemberApiRole role) {
+        return TaskMemberRole.valueOf(role.name());
     }
 
     public TaskStatus toDatabaseStatus(TaskApiStatus status) {

@@ -55,7 +55,12 @@ class TaskServiceTest {
         List<TaskDto> tasks = List.of(task(TASK_ID, USER_ID));
         repository.tasks = tasks;
         TaskSorter taskSorter = mock(TaskSorter.class);
-        TaskService service = new TaskService(repository, new TaskFilter(), taskSorter);
+        TaskService service = new TaskService(
+                repository,
+                new RecordingTaskMemberService(repository),
+                new TaskFilter(),
+                taskSorter
+        );
 
         assertEquals(
                 tasks,
@@ -76,7 +81,12 @@ class TaskServiceTest {
         List<TaskDto> tasks = List.of(task(TASK_ID, USER_ID));
         repository.tasks = tasks;
         TaskSorter taskSorter = mock(TaskSorter.class);
-        TaskService service = new TaskService(repository, new TaskFilter(), taskSorter);
+        TaskService service = new TaskService(
+                repository,
+                new RecordingTaskMemberService(repository),
+                new TaskFilter(),
+                taskSorter
+        );
 
         assertEquals(tasks, service.findAll(USER_ID));
         verifyNoInteractions(taskSorter);
@@ -392,7 +402,7 @@ class TaskServiceTest {
     }
 
     private static TaskService service(RecordingTaskRepository repository) {
-        return new TaskService(repository, new TaskFilter(), new TaskSorter() {
+        return new TaskService(repository, new RecordingTaskMemberService(repository), new TaskFilter(), new TaskSorter() {
             @Override
             public List<TaskDto> sort(
                     List<TaskDto> tasks,
@@ -447,20 +457,9 @@ class TaskServiceTest {
         }
 
         @Override
-        public Optional<TaskMemberRole> findMemberRole(Long taskId, Long userId) {
-            return memberRole;
-        }
-
-        @Override
         public TaskDto create(TaskDto task) {
             taskToCreate = task;
             return createdTask;
-        }
-
-        @Override
-        public void addOwner(Long taskId, Long userId) {
-            ownerTaskId = taskId;
-            ownerUserId = userId;
         }
 
         @Override
@@ -511,6 +510,46 @@ class TaskServiceTest {
         public boolean deleteById(Long taskId) {
             deletedTaskId = taskId;
             return deleted;
+        }
+    }
+
+    private static final class RecordingTaskMemberService extends TaskMemberService {
+        private final RecordingTaskRepository taskRepository;
+
+        private RecordingTaskMemberService(RecordingTaskRepository taskRepository) {
+            super(null, null, null);
+            this.taskRepository = taskRepository;
+        }
+
+        @Override
+        public void requireAccess(Long taskId, Long userId) {
+            role(taskId);
+        }
+
+        @Override
+        public void requireEditor(Long taskId, Long userId) {
+            TaskMemberRole role = role(taskId);
+            if (role != TaskMemberRole.owner && role != TaskMemberRole.editor) {
+                throw new TaskAccessDeniedException(taskId);
+            }
+        }
+
+        @Override
+        public void requireOwner(Long taskId, Long userId) {
+            if (role(taskId) != TaskMemberRole.owner) {
+                throw new TaskAccessDeniedException(taskId);
+            }
+        }
+
+        @Override
+        public void addOwner(Long taskId, Long userId) {
+            taskRepository.ownerTaskId = taskId;
+            taskRepository.ownerUserId = userId;
+        }
+
+        private TaskMemberRole role(Long taskId) {
+            return taskRepository.memberRole
+                    .orElseThrow(() -> new TaskAccessDeniedException(taskId));
         }
     }
 }

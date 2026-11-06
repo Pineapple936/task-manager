@@ -51,6 +51,11 @@ class DatabaseAuthenticationProviderTest {
         UserDto user = new UserDto(1L, "egor", passwordHash, OffsetDateTime.now());
         return new UserRepository() {
             @Override
+            public Optional<UserDto> findById(Long userId) {
+                return Optional.of(user);
+            }
+
+            @Override
             public Optional<UserDto> findByUsername(String username) {
                 return Optional.of(user);
             }

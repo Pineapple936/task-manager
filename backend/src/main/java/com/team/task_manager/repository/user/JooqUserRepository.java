@@ -16,6 +16,13 @@ public class JooqUserRepository implements UserRepository {
     private final DSLContext dsl;
 
     @Override
+    public Optional<UserDto> findById(Long userId) {
+        return dsl.selectFrom(USERS)
+                .where(USERS.ID.eq(userId))
+                .fetchOptional(JooqUserRepository::toDto);
+    }
+
+    @Override
     public Optional<UserDto> findByUsername(String username) {
         return dsl.selectFrom(USERS)
                 .where(USERS.USERNAME.eq(username))
