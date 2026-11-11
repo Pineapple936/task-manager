@@ -2,7 +2,16 @@ package com.team.task_manager.service.task;
 
 import java.util.List;
 
+<<<<<<< HEAD
 import com.team.task_manager.controller.error.exception.task.TaskCompletionBlockedException;
+=======
+import javax.naming.BinaryRefAddr;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+
+import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
+>>>>>>> 3e96c8f (feat: добавлен метод для получения N приоритетных задач)
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyCycleException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFoundException;
@@ -14,11 +23,16 @@ import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
 import com.team.task_manager.repository.task.entity.TaskUpdateDto;
 import com.team.task_manager.service.algorithm.graph.AdjacencyMatrixGraph;
+import com.team.task_manager.service.algorithm.tree.BinarySearchTree;
 import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
 import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
 import com.team.task_manager.service.task.entity.sort.SortDirection;
 import com.team.task_manager.service.task.entity.sort.TaskSortField;
+<<<<<<< HEAD
 import com.team.task_manager.service.tag.TagService;
+=======
+import com.team.task_manager.repository.task.entity.TaskDependencyDto;
+>>>>>>> 3e96c8f (feat: добавлен метод для получения N приоритетных задач)
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -195,6 +209,33 @@ public class TaskService {
         taskMemberService.requireEditor(taskId, userId);
 
         return task;
+    public List<TaskDto> getTopNPriorityTasks(Long userId, int n, String algorithmType) {
+        List<TaskDto> tasks = taskRepository.findAllByUserId(userId);
+
+        if (tasks.isEmpty() || n <= 0) {
+            return List.of();
+        }
+
+        Comparator<TaskDto> priorityComparator = Comparator.comparing(
+            TaskDto::priority,
+            Comparator.nullsLast(Comparator.reverseOrder())
+        );
+
+        if ("SORT".equalsIgnoreCase(algorithmType)) {
+            List<TaskDto> sortedTasks = taskSorter.sort(
+                    tasks, 
+                    SortAlgorithm.QUICK, 
+                    TaskSortField.PRIORITY, 
+                    SortDirection.DESC
+            );
+            return sortedTasks.subList(0, Math.min(n, sortedTasks.size()));
+        } else {
+            BinarySearchTree<TaskDto> bst = new BinarySearchTree<>(priorityComparator);
+            for (TaskDto  task : tasks) {
+                bst.insert(task);
+            }
+            return bst.getTopN(n);
+        }
     }
 
 }
