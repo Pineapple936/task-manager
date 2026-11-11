@@ -223,4 +223,15 @@ public class TaskController {
         
         return new TaskGraphResponse(nodes);
     }
+
+    @GetMapping("/top-proirity")
+    public List<TaskListItemResponse> getTopProirityTasks(
+        @AuthenticationPrincipal AuthenticatedUser user,
+        @RequestParam(defaultValue = "5") int n,
+        @RequestParam(defaultValue = "BST") String algorithm
+    ) {
+        return taskService.getTopProirityTasks(user.id, n, algorithm).stream()
+                .map(taskMapper::toListItemResponse)
+                .toList();
+    }
 }
