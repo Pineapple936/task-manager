@@ -1,6 +1,8 @@
 package com.team.task_manager.service.task;
 
 import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
 
 <<<<<<< HEAD
 import com.team.task_manager.controller.error.exception.task.TaskCompletionBlockedException;
@@ -9,6 +11,9 @@ import javax.naming.BinaryRefAddr;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.PriorityQueue;
 
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
 >>>>>>> 3e96c8f (feat: добавлен метод для получения N приоритетных задач)
@@ -237,5 +242,61 @@ public class TaskService {
             return bst.getTopN(n);
         }
     }
+    
+    @Transactional
+    public List<TaskDto> getRecommendedOrder(Long userId) {
+        List<TaskDto> allTasks = taskRepository.findAllByUserId(userId);
+        if (allTasks.isEmpty()) {
+            return List.of();
+        }
 
+        Map<Long, Integer> inDegree = new HashMap<>();
+        Map<Long, TaskDto> taskById = new HashMap<>();
+
+        for (TaskDto task : allTasks) {
+            taskById.put(task.id(), task);
+            inDegree.put(task.id(), (task.dependencies() != null ? task.dependencies.size() : 0));
+        }
+
+        Map<Long, List<TaskDto>> adjList = new HashMap<>();
+        for (TaskDto task : allTasks) {
+            if (task.dependencies() != null) {
+                for (TaskDependencyDto dep : task.dependencies()) {
+                    adjList.computeIfAbsent(dep.id(), k -> new ArrayList<>()).add(task);
+                }
+            }
+        }
+
+        Comparator<TaskDto> priorityComparator = Comparator.comparing(
+            TAskDto::priority,
+            Comparator.nullsLast(Comparator.reverseOrder())
+        );
+
+        ProrityQueue queue = new PriorityQueue<>(priorityComparator);
+
+        for (TaskDto task : allTasks) {
+            if (inDegree.get(task.id()) == 0) {
+                queue.add(task);
+            }
+        }
+
+        List<TaskDto> recommendedOrder = new ArrayList<>();
+        while (!queue.isEmpty()) {
+            TaskDto current = queue.poll();
+            recommendedOrder.add(current);
+
+            if (adjList.containsKey(current.id())) {
+                for (TaskDto dependentTask : adjList.get(current.id())) {
+                    int newDegree = inDegree.put(dependentTask.id()) - 1;
+                    inDegree.put(dependentTask.id(), newDegree);
+
+                    if (newDegree == 0) {
+                        queue.add(dependentTask);
+                    }
+                }
+            }
+        }
+
+        return recommendedOrder;
+    }
 }
