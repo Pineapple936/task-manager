@@ -224,13 +224,22 @@ public class TaskController {
         return new TaskGraphResponse(nodes);
     }
 
-    @GetMapping("/top-proirity")
-    public List<TaskListItemResponse> getTopProirityTasks(
+    @GetMapping("/top-priority")
+    public List<TaskListItemResponse> getTopNPriorityTasks(
         @AuthenticationPrincipal AuthenticatedUser user,
         @RequestParam(defaultValue = "5") int n,
         @RequestParam(defaultValue = "BST") String algorithm
     ) {
-        return taskService.getTopProirityTasks(user.id, n, algorithm).stream()
+        return taskService.getTopNPriorityTasks(user.id(), n, algorithm).stream()
+                .map(taskMapper::toListItemResponse)
+                .toList();
+    }
+
+    @GetMapping("/recommended")
+    public List<TaskListItemResponse> getRecommended(
+        @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        return taskService.getRecommendedOrder(user.id()).stream()
                 .map(taskMapper::toListItemResponse)
                 .toList();
     }
