@@ -2,6 +2,7 @@ package com.team.task_manager.service.task;
 
 import java.util.List;
 
+import com.team.task_manager.controller.error.exception.task.TaskCompletionBlockedException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyCycleException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFoundException;
@@ -9,6 +10,7 @@ import com.team.task_manager.controller.error.exception.task.TaskNotFoundExcepti
 import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
 import com.team.task_manager.controller.error.exception.tag.TaskTagAlreadyExistsException;
 import com.team.task_manager.repository.task.TaskRepository;
+import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
 import com.team.task_manager.repository.task.entity.TaskUpdateDto;
 import com.team.task_manager.service.algorithm.graph.AdjacencyMatrixGraph;
@@ -88,6 +90,11 @@ public class TaskService {
     @Transactional
     public TaskDto update(Long taskId, TaskUpdateDto update, Long userId) {
         TaskDto task = requireTaskEditor(taskId, userId);
+
+        if (update.status() == TaskStatus.completed
+                && task.dependencies().stream().anyMatch(dependency -> dependency.status() != TaskStatus.completed)) {
+            throw new TaskCompletionBlockedException(taskId);
+        }
 
         TaskDto updatedTask = new TaskDto(
                 task.id(),

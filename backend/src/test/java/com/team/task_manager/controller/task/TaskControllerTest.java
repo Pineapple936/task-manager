@@ -3,6 +3,7 @@ package com.team.task_manager.controller.task;
 import java.time.OffsetDateTime;
 
 import com.team.task_manager.controller.error.GlobalExceptionHandler;
+import com.team.task_manager.controller.error.exception.task.TaskCompletionBlockedException;
 import com.team.task_manager.controller.task.entity.TaskMapper;
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
@@ -65,6 +66,24 @@ class TaskControllerTest {
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void returnsConflictWhenTaskDependenciesAreIncomplete() throws Exception {
+        when(taskService.update(eq(20L), any(), eq(USER_ID)))
+                .thenThrow(new TaskCompletionBlockedException(20L));
+
+        mockMvc.perform(patch("/tasks/20")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"completed\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("TASK_COMPLETION_BLOCKED"))
+                .andExpect(jsonPath("$.message").value(
+                        "Нельзя завершить задачу, пока не выполнены все её зависимости"
+                ));
+
+        verifyNoInteractions(taskMemberService);
     }
 
     @Test

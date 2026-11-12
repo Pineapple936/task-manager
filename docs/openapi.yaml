@@ -178,6 +178,8 @@ paths:
       description: >-
         Передаются только поля, которые нужно изменить. Пустой объект не изменяет
         задачу. Изменение доступно владельцу и редактору.
+        Установить статус completed можно только после выполнения всех прямых
+        зависимостей задачи. Иначе возвращается 409 с кодом TASK_COMPLETION_BLOCKED.
       operationId: updateTask
       requestBody:
         required: true
@@ -196,6 +198,16 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/TaskNotFound'
+        '409':
+          description: Нельзя завершить задачу, пока не выполнены все её зависимости
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: 409
+                error: TASK_COMPLETION_BLOCKED
+                message: Нельзя завершить задачу, пока не выполнены все её зависимости
     delete:
       summary: Удалить задачу
       description: >-

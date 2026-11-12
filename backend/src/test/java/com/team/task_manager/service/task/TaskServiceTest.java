@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
+import com.team.task_manager.controller.error.exception.task.TaskCompletionBlockedException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyCycleException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFoundException;
@@ -19,6 +20,7 @@ import com.team.task_manager.repository.tag.TagRepository;
 import com.team.task_manager.repository.tag.entity.TagDto;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.repository.task.entity.TaskDto;
+import com.team.task_manager.repository.task.entity.TaskDependencyDto;
 import com.team.task_manager.repository.task.entity.TaskUpdateDto;
 import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
 import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
@@ -185,6 +187,85 @@ class TaskServiceTest {
 
         assertSame(task, service.update(TASK_ID, update(), USER_ID));
         assertEquals("Task", repository.taskToUpdate.name());
+    }
+
+    @Test
+    void rejectsCompletionWhenAnyDependencyIsIncompleteWithoutSavingChanges() {
+        for (TaskStatus status : List.of(TaskStatus.planned, TaskStatus.started)) {
+            RecordingTaskRepository repository = new RecordingTaskRepository();
+            repository.task = Optional.of(task(TASK_ID, USER_ID).withDependencies(List.of(
+                    new TaskDependencyDto(30L, "Completed dependency", TaskStatus.completed),
+                    new TaskDependencyDto(31L, "Incomplete dependency", status)
+            )));
+            repository.memberRole = Optional.of(TaskMemberRole.editor);
+
+            assertThrows(TaskCompletionBlockedException.class, () -> service(repository).update(
+                    TASK_ID,
+                    new TaskUpdateDto("Changed name", null, null, TaskStatus.completed, null, false),
+                    USER_ID
+            ));
+            assertNull(repository.taskToUpdate);
+        }
+    }
+
+    @Test
+    void completesTaskWhenAllDependenciesAreCompleted() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        TaskDto task = task(TASK_ID, USER_ID).withDependencies(List.of(
+                new TaskDependencyDto(30L, "First dependency", TaskStatus.completed),
+                new TaskDependencyDto(31L, "Second dependency", TaskStatus.completed)
+        ));
+        repository.task = Optional.of(task);
+        repository.memberRole = Optional.of(TaskMemberRole.editor);
+        repository.updatedTask = Optional.of(task);
+
+        service(repository).update(
+                TASK_ID,
+                new TaskUpdateDto(null, null, null, TaskStatus.completed, null, false),
+                USER_ID
+        );
+
+        assertEquals(TaskStatus.completed, repository.taskToUpdate.status());
+        assertEquals(task.dependencies(), repository.taskToUpdate.dependencies());
+    }
+
+    @Test
+    void completesTaskWithoutDependencies() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        TaskDto task = task(TASK_ID, USER_ID);
+        repository.task = Optional.of(task);
+        repository.memberRole = Optional.of(TaskMemberRole.owner);
+        repository.updatedTask = Optional.of(task);
+
+        service(repository).update(
+                TASK_ID,
+                new TaskUpdateDto(null, null, null, TaskStatus.completed, null, false),
+                USER_ID
+        );
+
+        assertEquals(TaskStatus.completed, repository.taskToUpdate.status());
+    }
+
+    @Test
+    void allowsOtherUpdatesWhenDependenciesAreIncomplete() {
+        for (TaskStatus status : new TaskStatus[] {null, TaskStatus.planned, TaskStatus.started}) {
+            RecordingTaskRepository repository = new RecordingTaskRepository();
+            TaskDto task = task(TASK_ID, USER_ID).withDependencies(List.of(
+                    new TaskDependencyDto(30L, "Incomplete dependency", TaskStatus.planned)
+            ));
+            repository.task = Optional.of(task);
+            repository.memberRole = Optional.of(TaskMemberRole.editor);
+            repository.updatedTask = Optional.of(task);
+
+            service(repository).update(
+                    TASK_ID,
+                    new TaskUpdateDto("Changed name", null, null, status, null, false),
+                    USER_ID
+            );
+
+            assertEquals("Changed name", repository.taskToUpdate.name());
+            assertEquals(status == null ? task.status() : status, repository.taskToUpdate.status());
+        }
     }
 
     @Test

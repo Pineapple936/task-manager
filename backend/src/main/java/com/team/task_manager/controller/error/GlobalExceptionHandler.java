@@ -9,6 +9,7 @@ import com.team.task_manager.controller.error.exception.tag.TaskTagAlreadyExists
 import com.team.task_manager.controller.error.exception.task.InvalidTaskFilterException;
 import com.team.task_manager.controller.error.exception.task.InvalidTaskMemberRoleException;
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
+import com.team.task_manager.controller.error.exception.task.TaskCompletionBlockedException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyCycleException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFoundException;
@@ -74,6 +75,16 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT.value(),
                 "TASK_DEPENDENCY_ALREADY_EXISTS",
                 "Такая зависимость уже существует"
+        );
+    }
+
+    @ExceptionHandler(TaskCompletionBlockedException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleTaskCompletionBlocked(TaskCompletionBlockedException exception) {
+        return new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                "TASK_COMPLETION_BLOCKED",
+                "Нельзя завершить задачу, пока не выполнены все её зависимости"
         );
     }
 
