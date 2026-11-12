@@ -211,10 +211,12 @@ public class TaskService {
             return List.of();
         }
 
-        Comparator<TaskDto> priorityComparator = Comparator.comparing(
-            TaskDto::priority,
-            Comparator.nullsLast(Comparator.reverseOrder())
-        );
+        int limit = Math.min(n, tasks.size());
+
+        Comparator<TaskDto> priorityComparator = Comparator
+            .comparing(TaskDto::priority, Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(TaskDto::deadline, Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(TaskDto::id, Comparator.nullsLast(Comparator.reverseOrder()));
 
         if ("SORT".equalsIgnoreCase(algorithmType)) {
             List<TaskDto> sortedTasks = taskSorter.sort(
