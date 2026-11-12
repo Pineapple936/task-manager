@@ -4,7 +4,7 @@ info:
   version: 0.1.0
   description: |
     Базовый REST API менеджера задач.
-    Управление участниками задач пока не входит в API-контракт.
+    API поддерживает теги и совместную работу над задачами.
 servers:
   - url: /
 security:
@@ -84,22 +84,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /tags:
-    get:
-      summary: Получить список доступных тегов
-      description: Возвращает общий фиксированный список тегов для всех пользователей.
-      operationId: getTags
-      responses:
-        '200':
-          description: Список тегов
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Tag'
         '401':
           $ref: '#/components/responses/Unauthorized'
   /tasks:
@@ -202,12 +186,8 @@ paths:
             schema:
               $ref: '#/components/schemas/UpdateTaskRequest'
       responses:
-        '200':
-          description: Обновлённая задача
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskDetails'
+        '204':
+          description: Задача обновлена
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -284,6 +264,135 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /tasks/{taskId}/members:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      summary: Получить участников задачи
+      description: Доступно любому участнику задачи.
+      operationId: getTaskMembers
+      responses:
+        '200':
+          description: Участники задачи
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskMember'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+    post:
+      summary: Добавить участника задачи
+      description: >-
+        Доступно только владельцу. Добавить пользователя можно с ролью editor
+        или viewer.
+      operationId: addTaskMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTaskMemberRequest'
+      responses:
+        '201':
+          description: Участник добавлен
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Задача или пользователь не найдены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Пользователь уже является участником задачи
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /tasks/{taskId}/members/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+      - $ref: '#/components/parameters/UserId'
+    patch:
+      summary: Изменить роль участника задачи
+      description: >-
+        Доступно только владельцу. Роль можно менять только между editor и
+        viewer. Роль владельца изменить нельзя.
+      operationId: updateTaskMemberRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskMemberRoleRequest'
+      responses:
+        '204':
+          description: Роль изменена
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Задача или участник не найдены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Удалить участника задачи
+      description: >-
+        Доступно только владельцу. Владелец не может удалить себя из
+        участников. Пользователь и задача не удаляются.
+      operationId: deleteTaskMember
+      responses:
+        '204':
+          description: Доступ участника удалён
+        '400':
+          description: Нельзя удалить владельца задачи
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Задача или участник не найдены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /tags:
+    get:
+      summary: Получить список доступных тегов
+      description: Возвращает общий фиксированный список тегов для всех пользователей.
+      operationId: getTags
+      responses:
+        '200':
+          description: Список тегов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /tasks/{taskId}/tags/{tagId}:
     parameters:
       - $ref: '#/components/parameters/TaskId'
@@ -339,6 +448,15 @@ components:
       in: cookie
       name: JSESSIONID
   parameters:
+    TagId:
+      name: tagId
+      in: path
+      required: true
+      description: Идентификатор тега
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
     TaskId:
       name: taskId
       in: path
@@ -357,11 +475,11 @@ components:
         type: integer
         format: int64
         minimum: 1
-    TagId:
-      name: tagId
+    UserId:
+      name: userId
       in: path
       required: true
-      description: Идентификатор тега
+      description: Идентификатор пользователя
       schema:
         type: integer
         format: int64
@@ -427,6 +545,19 @@ components:
         enum: [QUICK, INSERTION, MERGE]
         default: MERGE
   schemas:
+    Tag:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          maxLength: 50
+          example: Работа
     RegisterRequest:
       type: object
       additionalProperties: false
@@ -475,19 +606,9 @@ components:
         В API хранятся технические английские значения.
         Пользовательский интерфейс переводит их на русский.
       enum: [planned, started, completed]
-    Tag:
-      type: object
-      additionalProperties: false
-      required: [id, name]
-      properties:
-        id:
-          type: integer
-          format: int64
-          example: 1
-        name:
-          type: string
-          maxLength: 50
-          example: Работа
+    TaskMemberRole:
+      type: string
+      enum: [owner, editor, viewer]
     TaskListItem:
       type: object
       description: Компактная задача для отрисовки списка без текста заметки.
@@ -596,12 +717,55 @@ components:
       allOf:
         - $ref: '#/components/schemas/TaskListItem'
         - type: object
-          required: [description]
+          required: [description, members]
           properties:
             description:
               type: string
               description: Полный текст заметки или описание задачи
               example: Собрать результаты тестирования и оформить их в документе.
+            members:
+              type: array
+              description: Участники задачи и их роли
+              items:
+                $ref: '#/components/schemas/TaskMember'
+    TaskMember:
+      type: object
+      additionalProperties: false
+      required: [userId, username, role]
+      properties:
+        userId:
+          type: integer
+          format: int64
+          example: 2
+        username:
+          type: string
+          maxLength: 50
+          example: stepa
+        role:
+          $ref: '#/components/schemas/TaskMemberRole'
+    AddTaskMemberRequest:
+      type: object
+      additionalProperties: false
+      required: [userId, role]
+      properties:
+        userId:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 2
+        role:
+          type: string
+          enum: [editor, viewer]
+          example: editor
+    UpdateTaskMemberRoleRequest:
+      type: object
+      additionalProperties: false
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [editor, viewer]
+          example: viewer
     CreateTaskRequest:
       type: object
       additionalProperties: false

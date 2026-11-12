@@ -15,6 +15,7 @@ public record TaskDetailsResponse(
         OffsetDateTime createdAt,
         String description,
         List<TaskDependencyResponse> dependencies,
-        List<TagResponse> tags
+        List<TagResponse> tags,
+        List<TaskMemberResponse> members
 ) {
 }

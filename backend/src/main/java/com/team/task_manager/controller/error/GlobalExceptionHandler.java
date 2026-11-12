@@ -7,14 +7,18 @@ import com.team.task_manager.controller.error.exception.auth.UsernameAlreadyExis
 import com.team.task_manager.controller.error.exception.tag.TagNotFoundException;
 import com.team.task_manager.controller.error.exception.tag.TaskTagAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.task.InvalidTaskFilterException;
+import com.team.task_manager.controller.error.exception.task.InvalidTaskMemberRoleException;
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyCycleException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
+import com.team.task_manager.controller.error.exception.task.TaskMemberAlreadyExistsException;
+import com.team.task_manager.controller.error.exception.task.TaskMemberNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
 import com.team.task_manager.controller.error.entity.response.ErrorResponse;
 import com.team.task_manager.controller.error.entity.response.ValidationErrorResponse;
+import com.team.task_manager.controller.error.exception.user.UserNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -177,6 +181,46 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT.value(),
                 "TASK_TAG_ALREADY_EXISTS",
                 "Тег уже добавлен к задаче"
+        );
+    }
+
+    @ExceptionHandler(InvalidTaskMemberRoleException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleInvalidTaskMemberRole(InvalidTaskMemberRoleException exception) {
+        return new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "INVALID_TASK_MEMBER_ROLE",
+                "Нельзя назначить роль owner, изменить роль владельца или удалить его"
+        );
+    }
+
+    @ExceptionHandler(TaskMemberAlreadyExistsException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleTaskMemberAlreadyExists(TaskMemberAlreadyExistsException exception) {
+        return new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                "TASK_MEMBER_ALREADY_EXISTS",
+                "Пользователь уже является участником задачи"
+        );
+    }
+
+    @ExceptionHandler(TaskMemberNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleTaskMemberNotFound(TaskMemberNotFoundException exception) {
+        return new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "TASK_MEMBER_NOT_FOUND",
+                "Участник задачи не найден"
+        );
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleUserNotFound(UserNotFoundException exception) {
+        return new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "USER_NOT_FOUND",
+                "Пользователь не найден"
         );
     }
 

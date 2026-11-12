@@ -6,8 +6,11 @@ import com.team.task_manager.controller.error.GlobalExceptionHandler;
 import com.team.task_manager.controller.task.entity.TaskMapper;
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
+import com.team.task_manager.repository.task.entity.TaskMemberDto;
+import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.service.security.entity.AuthenticatedUser;
 import com.team.task_manager.service.task.TaskService;
+import com.team.task_manager.service.task.TaskMemberService;
 import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
 import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
 import com.team.task_manager.service.task.entity.sort.SortDirection;
@@ -31,19 +34,23 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class TaskControllerTest {
     private static final Long USER_ID = 10L;
 
     private TaskService taskService;
+    private TaskMemberService taskMemberService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         taskService = mock(TaskService.class);
-        TaskController controller = new TaskController(taskService, new TaskMapper());
+        taskMemberService = mock(TaskMemberService.class);
+        TaskController controller = new TaskController(taskService, taskMemberService, new TaskMapper());
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
@@ -150,7 +157,7 @@ class TaskControllerTest {
     @Test
     void createsTaskForAuthenticatedUserAndReturnsApiResponse() throws Exception {
         OffsetDateTime createdAt = OffsetDateTime.parse("2026-10-23T00:00:00+03:00");
-        when(taskService.create(any(), eq(USER_ID))).thenReturn(new TaskDto(
+        TaskDto createdTask = new TaskDto(
                 1L,
                 USER_ID,
                 "Task",
@@ -160,6 +167,10 @@ class TaskControllerTest {
                 null,
                 createdAt,
                 createdAt
+        );
+        when(taskService.create(any(), eq(USER_ID))).thenReturn(createdTask);
+        when(taskMemberService.findAll(1L, USER_ID)).thenReturn(java.util.List.of(
+                new TaskMemberDto(1L, USER_ID, "egor", TaskMemberRole.owner)
         ));
 
         mockMvc.perform(post("/tasks")
@@ -167,11 +178,53 @@ class TaskControllerTest {
                         .content("{\"name\":\"Task\",\"description\":\"Description\",\"priority\":0}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.name").value("Task"))
                 .andExpect(jsonPath("$.priority").value(0))
                 .andExpect(jsonPath("$.status").value("planned"))
-                .andExpect(jsonPath("$.description").value("Description"));
+                .andExpect(jsonPath("$.description").value("Description"))
+                .andExpect(jsonPath("$.members[0].userId").value(USER_ID))
+                .andExpect(jsonPath("$.members[0].username").value("egor"))
+                .andExpect(jsonPath("$.members[0].role").value("owner"));
 
         verify(taskService).create(any(), eq(USER_ID));
+        verify(taskMemberService).findAll(1L, USER_ID);
+    }
+
+    @Test
+    void updatesTaskWithoutResponseBody() throws Exception {
+        mockMvc.perform(patch("/tasks/20")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Updated task\"}"))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        verify(taskService).update(eq(20L), any(), eq(USER_ID));
+        verifyNoInteractions(taskMemberService);
+    }
+
+    @Test
+    void returnsMembersOnlyInDetailedTaskResponse() throws Exception {
+        OffsetDateTime createdAt = OffsetDateTime.parse("2026-10-23T00:00:00+03:00");
+        TaskDto task = new TaskDto(
+                20L,
+                USER_ID,
+                "Task",
+                "Description",
+                0,
+                TaskStatus.planned,
+                null,
+                createdAt,
+                createdAt
+        );
+        when(taskService.findById(20L, USER_ID)).thenReturn(task);
+        when(taskMemberService.findAll(20L, USER_ID)).thenReturn(java.util.List.of(
+                new TaskMemberDto(20L, USER_ID, "egor", TaskMemberRole.owner)
+        ));
+
+        mockMvc.perform(get("/tasks/20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.members[0].username").value("egor"))
+                .andExpect(jsonPath("$.members[0].role").value("owner"));
     }
 
     @Test
@@ -204,5 +257,61 @@ class TaskControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(taskService).deleteTag(20L, 1L, USER_ID);
+    }
+
+    @Test
+    void returnsTaskMembersForAuthenticatedUser() throws Exception {
+        when(taskMemberService.findAll(20L, USER_ID)).thenReturn(java.util.List.of(
+                new TaskMemberDto(
+                        20L,
+                        USER_ID,
+                        "egor",
+                        TaskMemberRole.owner
+                )
+        ));
+
+        mockMvc.perform(get("/tasks/20/members"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].userId").value(USER_ID))
+                .andExpect(jsonPath("$[0].username").value("egor"))
+                .andExpect(jsonPath("$[0].role").value("owner"));
+    }
+
+    @Test
+    void addsTaskMemberForAuthenticatedOwner() throws Exception {
+        mockMvc.perform(post("/tasks/20/members")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":30,\"role\":\"editor\"}"))
+                .andExpect(status().isCreated());
+
+        verify(taskMemberService).add(
+                20L,
+                30L,
+                TaskMemberRole.editor,
+                USER_ID
+        );
+    }
+
+    @Test
+    void changesTaskMemberRoleForAuthenticatedOwner() throws Exception {
+        mockMvc.perform(patch("/tasks/20/members/30")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"role\":\"viewer\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(taskMemberService).updateRole(
+                20L,
+                30L,
+                TaskMemberRole.viewer,
+                USER_ID
+        );
+    }
+
+    @Test
+    void deletesTaskMemberForAuthenticatedOwner() throws Exception {
+        mockMvc.perform(delete("/tasks/20/members/30"))
+                .andExpect(status().isNoContent());
+
+        verify(taskMemberService).delete(20L, 30L, USER_ID);
     }
 }

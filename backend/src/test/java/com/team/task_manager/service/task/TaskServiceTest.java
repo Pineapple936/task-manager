@@ -63,6 +63,7 @@ class TaskServiceTest {
         TaskService service = new TaskService(
                 repository,
                 new TagService(new RecordingTagRepository()),
+                new RecordingTaskMemberService(repository),
                 new TaskFilter(),
                 taskSorter
         );
@@ -89,6 +90,7 @@ class TaskServiceTest {
         TaskService service = new TaskService(
                 repository,
                 new TagService(new RecordingTagRepository()),
+                new RecordingTaskMemberService(repository),
                 new TaskFilter(),
                 taskSorter
         );
@@ -491,7 +493,7 @@ class TaskServiceTest {
             RecordingTaskRepository repository,
             RecordingTagRepository tagRepository
     ) {
-        return new TaskService(repository, new TagService(tagRepository), new TaskFilter(), new TaskSorter() {
+        return new TaskService(repository, new TagService(tagRepository), new RecordingTaskMemberService(repository), new TaskFilter(), new TaskSorter() {
             @Override
             public List<TaskDto> sort(
                     List<TaskDto> tasks,
@@ -550,20 +552,9 @@ class TaskServiceTest {
         }
 
         @Override
-        public Optional<TaskMemberRole> findMemberRole(Long taskId, Long userId) {
-            return memberRole;
-        }
-
-        @Override
         public TaskDto create(TaskDto task) {
             taskToCreate = task;
             return createdTask;
-        }
-
-        @Override
-        public void addOwner(Long taskId, Long userId) {
-            ownerTaskId = taskId;
-            ownerUserId = userId;
         }
 
         @Override
@@ -644,6 +635,46 @@ class TaskServiceTest {
         @Override
         public Optional<TagDto> findById(Long tagId) {
             return tag;
+        }
+    }
+
+    private static final class RecordingTaskMemberService extends TaskMemberService {
+        private final RecordingTaskRepository taskRepository;
+
+        private RecordingTaskMemberService(RecordingTaskRepository taskRepository) {
+            super(null, null, null);
+            this.taskRepository = taskRepository;
+        }
+
+        @Override
+        public void requireAccess(Long taskId, Long userId) {
+            role(taskId);
+        }
+
+        @Override
+        public void requireEditor(Long taskId, Long userId) {
+            TaskMemberRole role = role(taskId);
+            if (role != TaskMemberRole.owner && role != TaskMemberRole.editor) {
+                throw new TaskAccessDeniedException(taskId);
+            }
+        }
+
+        @Override
+        public void requireOwner(Long taskId, Long userId) {
+            if (role(taskId) != TaskMemberRole.owner) {
+                throw new TaskAccessDeniedException(taskId);
+            }
+        }
+
+        @Override
+        public void addOwner(Long taskId, Long userId) {
+            taskRepository.ownerTaskId = taskId;
+            taskRepository.ownerUserId = userId;
+        }
+
+        private TaskMemberRole role(Long taskId) {
+            return taskRepository.memberRole
+                    .orElseThrow(() -> new TaskAccessDeniedException(taskId));
         }
     }
 }

@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.UUID;
 
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
+import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
+import com.team.task_manager.repository.task.member.TaskMemberRepository;
 import com.team.task_manager.repository.tag.entity.TagDto;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.repository.task.entity.TaskDto;
@@ -26,6 +28,9 @@ class TagRepositoryTest {
 
     @Autowired
     private TaskRepository taskRepository;
+
+    @Autowired
+    private TaskMemberRepository taskMemberRepository;
 
     @Autowired
     private DSLContext dsl;
@@ -56,7 +61,7 @@ class TagRepositoryTest {
                 null,
                 null
         ));
-        taskRepository.addOwner(task.id(), userId);
+        taskMemberRepository.add(task.id(), userId, TaskMemberRole.owner);
         TagDto tag = tagRepository.findAll().getFirst();
 
         taskRepository.addTag(task.id(), tag.id());

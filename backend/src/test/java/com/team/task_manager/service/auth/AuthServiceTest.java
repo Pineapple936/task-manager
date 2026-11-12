@@ -51,6 +51,11 @@ class AuthServiceTest {
         private String passwordHash;
 
         @Override
+        public Optional<UserDto> findById(Long userId) {
+            return user;
+        }
+
+        @Override
         public Optional<UserDto> findByUsername(String username) {
             return user;
         }
