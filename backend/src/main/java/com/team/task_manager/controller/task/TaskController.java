@@ -12,6 +12,7 @@ import com.team.task_manager.controller.task.entity.request.UpdateTaskRequest;
 import com.team.task_manager.controller.task.entity.response.TaskDetailsResponse;
 import com.team.task_manager.controller.task.entity.response.TaskListItemResponse;
 import com.team.task_manager.controller.task.entity.response.TaskMemberResponse;
+import com.team.task_manager.controller.task.entity.response.TaskGraphResponse;
 import com.team.task_manager.service.security.entity.AuthenticatedUser;
 import com.team.task_manager.service.task.TaskService;
 import com.team.task_manager.service.task.TaskMemberService;
@@ -19,6 +20,7 @@ import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
 import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
 import com.team.task_manager.service.task.entity.sort.SortDirection;
 import com.team.task_manager.service.task.entity.sort.TaskSortField;
+import com.team.task_manager.service.task.entity.sort.TopNAlgorithm;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -210,5 +212,37 @@ public class TaskController {
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
         taskService.delete(taskId, user.id());
+    }
+
+    @GetMapping("/graph")
+    public TaskGraphResponse getTaskGraph(
+        @AuthenticationPrincipal AuthenticatedUser user 
+    ) {
+        List<TaskListItemResponse> nodes = taskService.findAll(user.id()).stream()
+                .map(taskMapper::toListItemResponse)
+                .toList();
+        
+        return new TaskGraphResponse(nodes);
+    }
+
+    @GetMapping("/top-priority")
+    public List<TaskListItemResponse> getTopNPriorityTasks(
+        @AuthenticationPrincipal AuthenticatedUser user,
+        @RequestParam(defaultValue = "5")
+        @Min(value = 1, message = "N должно быть больше 0") int n,
+        @RequestParam(defaultValue = "BST") TopNAlgorithm algorithm
+    ) {
+        return taskService.getTopNPriorityTasks(user.id(), n, algorithm).stream()
+                .map(taskMapper::toListItemResponse)
+                .toList();
+    }
+
+    @GetMapping("/recommended")
+    public List<TaskListItemResponse> getRecommended(
+        @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        return taskService.getRecommendedOrder(user.id()).stream()
+                .map(taskMapper::toListItemResponse)
+                .toList();
     }
 }

@@ -1,24 +1,36 @@
 package com.team.task_manager.service.task;
 
 import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
 
 import com.team.task_manager.controller.error.exception.task.TaskCompletionBlockedException;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+
+import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyCycleException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
 import com.team.task_manager.controller.error.exception.tag.TaskTagAlreadyExistsException;
+import com.team.task_manager.controller.error.exception.sort.UnsupportedSortAlgorithmException;
+import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
 import com.team.task_manager.repository.task.entity.TaskUpdateDto;
 import com.team.task_manager.service.algorithm.graph.AdjacencyMatrixGraph;
+import com.team.task_manager.service.algorithm.tree.BinarySearchTree;
 import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
 import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
 import com.team.task_manager.service.task.entity.sort.SortDirection;
 import com.team.task_manager.service.task.entity.sort.TaskSortField;
-import com.team.task_manager.service.tag.TagService;
+import com.team.task_manager.service.task.entity.sort.TopNAlgorithm;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -197,4 +209,113 @@ public class TaskService {
         return task;
     }
 
+    @Transactional(readOnly = true)
+    public List<TaskDto> getTopNPriorityTasks(Long userId, int n, TopNAlgorithm algorithmType) {
+        List<TaskDto> tasks = taskRepository.findAllByUserId(userId);
+
+        if (tasks.isEmpty() || n <= 0) {
+            return List.of();
+        }
+
+        int limit = Math.min(n, tasks.size());
+
+        Comparator<TaskDto> priorityComparator = Comparator
+            .comparing(TaskDto::priority, Comparator.nullsLast(Comparator.naturalOrder()))
+            .thenComparing(TaskDto::deadline, Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(TaskDto::id, Comparator.nullsLast(Comparator.reverseOrder()));
+
+        if (algorithmType == TopNAlgorithm.BST) {
+            BinarySearchTree<TaskDto> bst = new BinarySearchTree<>(priorityComparator);
+            for (TaskDto task : tasks) {
+                bst.insert(task);
+            }
+            return bst.getTopN(limit);
+        } else {
+            SortAlgorithm sortAlgorithm = switch (algorithmType) {
+                case QUICK -> SortAlgorithm.QUICK;
+                case MERGE -> SortAlgorithm.MERGE;
+                case INSERTION -> SortAlgorithm.INSERTION;
+                default -> throw new UnsupportedSortAlgorithmException(algorithmType.name());
+            };
+
+            List<TaskDto> sortedTasks = taskSorter.sort(
+                    tasks, 
+                    sortAlgorithm, 
+                    TaskSortField.PRIORITY, 
+                    SortDirection.DESC
+            );
+            return sortedTasks.subList(0, limit);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<TaskDto> getRecommendedOrder(Long userId) {
+        List<TaskDto> allTasks = taskRepository.findAllByUserId(userId);
+        if (allTasks.isEmpty()) {
+            return List.of();
+        }
+
+        List<TaskDto> activeTasks = allTasks.stream()
+            .filter(task -> task.status() != com.team.task_manager.jooq.generated.enums.TaskStatus.completed)
+            .toList();
+        
+        if (activeTasks.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Integer> inDegree = new HashMap<>();
+        Map<Long, TaskDto> taskById = new HashMap<>();
+
+        for (TaskDto task : activeTasks) {
+            taskById.put(task.id(), task);
+            inDegree.put(task.id(), 0);
+        }
+
+        Map<Long, List<TaskDto>> adjList = new HashMap<>();
+        for (TaskDto task : activeTasks) {
+            if (task.dependencies() != null) {
+                for (TaskDependencyDto dep : task.dependencies()) {
+                    if (taskById.containsKey(dep.id())) {
+                        inDegree.put(task.id(), inDegree.get(task.id()) + 1);
+                        adjList.computeIfAbsent(dep.id(), k -> new ArrayList<>()).add(task);
+                    }
+                }
+            }
+        }
+
+        Comparator<TaskDto> priorityComparator = Comparator.comparing(
+            TaskDto::priority,
+            Comparator.nullsLast(Comparator.reverseOrder())
+        );
+
+        PriorityQueue<TaskDto> queue = new PriorityQueue<>(priorityComparator);
+
+        for (TaskDto task : activeTasks) {
+            if (inDegree.get(task.id()) == 0) {
+                queue.add(task);
+            }
+        }
+
+        List<TaskDto> recommendedOrder = new ArrayList<>();
+        while (!queue.isEmpty()) {
+            TaskDto current = queue.poll();
+            recommendedOrder.add(current);
+
+            if (adjList.containsKey(current.id())) {
+                for (TaskDto dependentTask : adjList.get(current.id())) {
+                    int newDegree = inDegree.get(dependentTask.id()) - 1;
+                    inDegree.put(dependentTask.id(), newDegree);
+
+                    if (newDegree == 0) {
+                        queue.add(dependentTask);
+                    }
+                }
+            }
+        }
+
+        if (recommendedOrder.size() != activeTasks.size()) {
+            throw new TaskDependencyCycleException(null, null);
+        }
+        return recommendedOrder;
+    }
 }
