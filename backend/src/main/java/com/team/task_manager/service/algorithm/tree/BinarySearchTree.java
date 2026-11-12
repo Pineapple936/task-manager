@@ -3,6 +3,7 @@ package com.team.task_manager.service.algorithm.tree;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class BinarySearchTree<T> {
 
@@ -17,14 +18,14 @@ public class BinarySearchTree<T> {
 	}
 
 	private Node<T> root;
-	private Comparator comparator;
+	private Comparator<T> comparator;
 
-	public BinarySearchTree(Comparator comparator) {
+	public BinarySearchTree(Comparator<T> comparator) {
 		this.comparator = comparator;
 	}
 
-	public insert(T item) {
-		poot = insertRecurs(root, item);
+	public void insert(T item) {
+		root = insertRecurs(root, item);
 	}
 
 	public Node<T> insertRecurs(Node<T> current, T item) {
@@ -32,10 +33,16 @@ public class BinarySearchTree<T> {
 			return new Node<>(item);
 		}
 
-		if (comparator.compare(item, current.data) >= 0) {
+		if (comparator.compare(item, current.data) > 0) {
 			current.right = insertRecurs(current.right, item);
-		} else {
+		} else if (comparator.compare(item, current.data) < 0) {
 			current.left = insertRecurs(current.left, item);
+		} else {
+			if (ThreadLocalRandom.current().nextBoolean()) {
+				current.right = insertRecurs(current.right, item);
+			} else {
+				current.left = insertRecurs(current.left, item);
+			}
 		}
 
 		return current;
@@ -49,9 +56,9 @@ public class BinarySearchTree<T> {
 		return result;
 	}
 
-	public collectTopN(Node<T> current, List<T> result, int n) {
+	public void collectTopN(Node<T> current, List<T> result, int n) {
 		if (current == null || result.size() >= n) {
-			return result;
+			return;
 		}
 
 		collectTopN(current.right, result, n);
