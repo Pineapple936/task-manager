@@ -18,6 +18,7 @@ import com.team.task_manager.controller.error.exception.task.TaskNotFoundExcepti
 import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
 import com.team.task_manager.controller.error.exception.tag.TaskTagAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.sort.UnsupportedSortAlgorithmException;
+import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
@@ -29,8 +30,7 @@ import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
 import com.team.task_manager.service.task.entity.sort.SortDirection;
 import com.team.task_manager.service.task.entity.sort.TaskSortField;
 import com.team.task_manager.service.task.entity.sort.TopNAlgorithm;
-import com.team.task_manager.service.tag.TagService;
-import com.team.task_manager.repository.task.entity.TaskDependencyDto;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -209,6 +209,7 @@ public class TaskService {
         return task;
     }
 
+    @Transactional(readOnly = true)
     public List<TaskDto> getTopNPriorityTasks(Long userId, int n, TopNAlgorithm algorithmType) {
         List<TaskDto> tasks = taskRepository.findAllByUserId(userId);
 
