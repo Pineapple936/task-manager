@@ -1,4 +1,4 @@
-package com.team.task_manager.comtroller.task.entity.response
+package com.team.task_manager.controller.task.entity.response;
 
 import java.util.List;
 
