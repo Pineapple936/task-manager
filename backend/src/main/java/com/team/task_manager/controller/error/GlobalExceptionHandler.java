@@ -1,5 +1,8 @@
 package com.team.task_manager.controller.error;
 
+import com.team.task_manager.controller.error.exception.task.TaskImportException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -37,6 +40,20 @@ import com.team.task_manager.controller.error.exception.sort.UnsupportedSortAlgo
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(TaskImportException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleTaskImport(TaskImportException exception) {
+        return new ErrorResponse(
+                400, "IMPORT_VALIDATION_ERROR", exception.getMessage()
+        );
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleMissingFile() {
+        return new ErrorResponse(400, "VALIDATION_ERROR", "Необходимо передать файл в поле file");
+    }
 
     @ExceptionHandler({ConstraintViolationException.class, HttpMessageNotReadableException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)

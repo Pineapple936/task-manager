@@ -57,6 +57,19 @@ public class JooqTaskMemberRepository implements TaskMemberRepository {
     }
 
     @Override
+    public void addOwners(List<Long> taskIds, Long userId) {
+        if (taskIds.isEmpty()) {
+            return;
+        }
+        var insert = dsl.insertInto(TASK_MEMBERS,
+                TASK_MEMBERS.TASK_ID, TASK_MEMBERS.USER_ID, TASK_MEMBERS.ROLE);
+        for (Long taskId : taskIds) {
+            insert.values(taskId, userId, TaskMemberRole.owner);
+        }
+        insert.execute();
+    }
+
+    @Override
     public boolean updateRole(Long taskId, Long userId, TaskMemberRole role) {
         return dsl.update(TASK_MEMBERS)
                 .set(TASK_MEMBERS.ROLE, role)

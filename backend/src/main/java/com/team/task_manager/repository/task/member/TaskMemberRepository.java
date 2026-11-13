@@ -13,6 +13,8 @@ public interface TaskMemberRepository {
 
     void add(Long taskId, Long userId, TaskMemberRole role);
 
+    void addOwners(List<Long> taskIds, Long userId);
+
     boolean updateRole(Long taskId, Long userId, TaskMemberRole role);
 
     boolean delete(Long taskId, Long userId);

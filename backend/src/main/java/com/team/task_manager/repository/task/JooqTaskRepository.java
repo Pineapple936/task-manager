@@ -64,6 +64,20 @@ public class JooqTaskRepository implements TaskRepository {
     }
 
     @Override
+    public List<Long> createAll(List<TaskDto> tasks, Long userId) {
+        if (tasks.isEmpty()) {
+            return List.of();
+        }
+        var insert = dsl.insertInto(TASKS,
+                TASKS.CREATED_BY_USER_ID, TASKS.NAME, TASKS.DESCRIPTION,
+                TASKS.PRIORITY, TASKS.STATUS, TASKS.DEADLINE);
+        for (TaskDto task : tasks) {
+            insert.values(userId, task.name(), task.description(), task.priority(), task.status(), task.deadline());
+        }
+        return insert.returningResult(TASKS.ID).fetch(TASKS.ID);
+    }
+
+    @Override
     public boolean dependencyExists(Long taskId, Long dependencyTaskId) {
         return dsl.fetchExists(
                 dsl.selectOne()

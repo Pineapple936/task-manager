@@ -25,6 +25,8 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -46,6 +48,17 @@ public class TaskController {
     private final TaskService taskService;
     private final TaskMemberService taskMemberService;
     private final TaskMapper taskMapper;
+    private final TaskImportReader taskImportReader;
+
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public void importTasks(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        var tasks = taskImportReader.read(file).stream().map(taskMapper::toCreateDto).toList();
+        taskService.createAll(tasks, user.id());
+    }
 
     @GetMapping
     public List<TaskListItemResponse> findAll(

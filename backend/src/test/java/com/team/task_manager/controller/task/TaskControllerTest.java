@@ -51,7 +51,7 @@ class TaskControllerTest {
     void setUp() {
         taskService = mock(TaskService.class);
         taskMemberService = mock(TaskMemberService.class);
-        TaskController controller = new TaskController(taskService, taskMemberService, new TaskMapper());
+        TaskController controller = new TaskController(taskService, taskMemberService, new TaskMapper(), mock(TaskImportReader.class));
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
