@@ -134,6 +134,45 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /tasks/import:
+    post:
+      summary: Импортировать задачи из CSV или JSON
+      description: |
+        Импорт целиком: при любой ошибке ни одна задача не сохраняется.
+        Ошибки аннотаций собираются в одну строку message.
+        Ошибки структуры файла, формата числа или даты отклоняются сразу.
+        Пользователь становится автором и владельцем задач; статус — planned.
+        JSON — непустой массив объектов с полями CreateTaskRequest.
+        CSV — UTF-8 (допускается BOM), разделитель запятая, обязательные заголовки
+        name,description,priority,deadline. Пустые необязательные поля CSV означают null.
+        Поддерживаются кавычки, запятые и переносы строк внутри полей CSV.
+        Приоритет от 0 до 10. Дедлайн — ISO 8601 с часовым поясом или null.
+        Формат определяется по расширению .csv/.json и проверяется при разборе.
+        Сообщение об ошибках аннотаций содержит поля и индексы JSON с нуля (JSON[1]) или физические строки начала записей CSV
+        с единицы (CSV, строка 3).
+      operationId: importTasks
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Все задачи созданы. Тело ответа отсутствует.
+        '400':
+          description: Файл отсутствует, пуст, имеет неподдерживаемый формат или содержит ошибки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /statistics/task:
     get:
       summary: Получить статистику по задачам

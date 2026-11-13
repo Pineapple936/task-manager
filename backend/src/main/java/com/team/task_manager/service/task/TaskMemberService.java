@@ -37,6 +37,11 @@ public class TaskMemberService {
         taskMemberRepository.add(taskId, userId, TaskMemberRole.owner);
     }
 
+    @Transactional
+    public void addOwners(List<Long> taskIds, Long userId) {
+        taskMemberRepository.addOwners(taskIds, userId);
+    }
+
     @Transactional(readOnly = true)
     public void requireAccess(Long taskId, Long userId) {
         requireMember(taskId, userId);

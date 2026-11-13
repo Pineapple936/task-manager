@@ -68,6 +68,15 @@ public class TaskService {
     }
 
     @Transactional
+    public void createAll(List<TaskDto> tasks, Long userId) {
+        if (tasks.isEmpty()) {
+            return;
+        }
+        List<Long> taskIds = taskRepository.createAll(tasks, userId);
+        taskMemberService.addOwners(taskIds, userId);
+    }
+
+    @Transactional
     public TaskDto create(TaskDto task, Long userId) {
         TaskDto createdTask = taskRepository.create(
                 new TaskDto(

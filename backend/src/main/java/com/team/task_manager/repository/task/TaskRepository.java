@@ -12,6 +12,8 @@ public interface TaskRepository {
 
     TaskDto create(TaskDto task);
 
+    List<Long> createAll(List<TaskDto> tasks, Long userId);
+
     boolean dependencyExists(Long taskId, Long dependencyTaskId);
 
     List<List<Long>> findAllDependencyEdges();

@@ -639,6 +639,11 @@ class TaskServiceTest {
         }
 
         @Override
+        public List<Long> createAll(List<TaskDto> tasks, Long userId) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public boolean dependencyExists(Long taskId, Long dependencyTaskId) {
             return dependencyExists;
         }
