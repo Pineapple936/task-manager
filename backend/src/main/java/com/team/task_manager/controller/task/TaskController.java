@@ -233,4 +233,14 @@ public class TaskController {
                 .map(taskMapper::toListItemResponse)
                 .toList();
     }
+
+    @GetMapping("/search")
+    public List<TaskListItemResponse> searchTasks(
+        @AuthenticationPrincipal AuthenticatedUser user,
+        @RequestParam String name
+    ) {
+        return taskService.searchTasksByName(user.id(), name).stream()
+                .map(taskMapper::toListItemResponse)
+                .toList();
+    }
 }
