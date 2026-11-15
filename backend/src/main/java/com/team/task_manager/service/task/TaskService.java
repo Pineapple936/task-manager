@@ -25,6 +25,7 @@ import com.team.task_manager.repository.task.entity.TaskUpdateDto;
 import com.team.task_manager.repository.task.entity.TaskDependencyDto;
 import com.team.task_manager.service.algorithm.graph.AdjacencyMatrixGraph;
 import com.team.task_manager.service.algorithm.tree.BinarySearchTree;
+import com.team.task_manager.service.algorithm.tree.TaskPrefixTree;
 import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
 import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
 import com.team.task_manager.service.task.entity.sort.SortDirection;
@@ -322,5 +323,21 @@ public class TaskService {
             throw new TaskDependencyCycleException(null, null);
         }
         return recommendedOrder;
+    }
+
+    @Transactional(readOnly = true)
+    public List<TaskDto> searchTasksByName(Long userId, String name) {
+        if (name == null || name.isBlank()) {
+            return List.of();
+        }
+
+        TaskPrefixTree prefixTree = new TaskPrefixTree();
+
+        List<TaskDto> tasks = taskRepository.findAllByUserId(userId);
+        for (TaskDto task : tasks) {
+            prefixTree.insert(task);
+        }
+
+        return prefixTree.searchByPrefix(name);
     }
 }
