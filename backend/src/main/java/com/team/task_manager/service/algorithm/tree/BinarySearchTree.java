@@ -28,7 +28,7 @@ public class BinarySearchTree<T> {
 		root = insertRecurs(root, item);
 	}
 
-	public Node<T> insertRecurs(Node<T> current, T item) {
+	private Node<T> insertRecurs(Node<T> current, T item) {
 		if (current == null) {
 			return new Node<>(item);
 		}
@@ -56,7 +56,7 @@ public class BinarySearchTree<T> {
 		return result;
 	}
 
-	public void collectTopN(Node<T> current, List<T> result, int n) {
+	private void collectTopN(Node<T> current, List<T> result, int n) {
 		if (current == null || result.size() >= n) {
 			return;
 		}
