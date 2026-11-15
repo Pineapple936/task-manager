@@ -64,7 +64,14 @@ public class TaskSorter {
                         ? Comparator.reverseOrder()
                         : Comparator.naturalOrder();
                 
-                yield Comparator.comparing(TaskDto::priority, Comparator.nullsLast(priorityOrder));
+
+                Comparator<java.time.OffsetDateTime> deadlineOrder = (direction == SortDirection.DESC)
+                        ? Comparator.naturalOrder()
+                        : Comparator.reverseOrder();
+                
+                yield Comparator.comparing(TaskDto::priority, Comparator.nullsLast(priorityOrder))
+                        .thenComparing(TaskDto::deadline, Comparator.nullsLast(deadlineOrder))
+                        .thenComparing(TaskDto::id, Comparator.nullsLast(Comparator.naturalOrder));
             }
             case DEADLINE -> {
                 Comparator<java.time.OffsetDateTime> deadlineOrder = (direction == SortDirection.DESC)
