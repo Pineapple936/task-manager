@@ -2,7 +2,6 @@ package com.team.task_manager.service.task;
 
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
 
 import com.team.task_manager.controller.error.exception.task.TaskCompletionBlockedException;
 
@@ -23,6 +22,7 @@ import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
 import com.team.task_manager.repository.task.entity.TaskUpdateDto;
+import com.team.task_manager.repository.task.entity.TaskDependencyDto;
 import com.team.task_manager.service.algorithm.graph.AdjacencyMatrixGraph;
 import com.team.task_manager.service.algorithm.tree.BinarySearchTree;
 import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
@@ -30,6 +30,7 @@ import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
 import com.team.task_manager.service.task.entity.sort.SortDirection;
 import com.team.task_manager.service.task.entity.sort.TaskSortField;
 import com.team.task_manager.service.task.entity.sort.TopNAlgorithm;
+import com.team.task_manager.service.tag.TagService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -283,22 +284,26 @@ public class TaskService {
             }
         }
 
-        Comparator<TaskDto> priorityComparator = Comparator.comparing(
-            TaskDto::priority,
-            Comparator.nullsLast(Comparator.reverseOrder())
-        );
-
-        PriorityQueue<TaskDto> queue = new PriorityQueue<>(priorityComparator);
+        List<TaskDto> availableTasks = new ArrayList<>();
+        List<TaskDto> recommendedOrder = new ArrayList<>();
 
         for (TaskDto task : activeTasks) {
             if (inDegree.get(task.id()) == 0) {
-                queue.add(task);
+                availableTasks.add(task);
             }
         }
 
-        List<TaskDto> recommendedOrder = new ArrayList<>();
-        while (!queue.isEmpty()) {
-            TaskDto current = queue.poll();
+        while (!availableTasks.isEmpty()) {
+            List<TaskDto> sortedAvailable = taskSorter.sort(
+                    availableTasks, 
+                    SortAlgorithm.QUICK, 
+                    TaskSortField.PRIORITY, 
+                    SortDirection.DESC
+            );
+            
+            TaskDto current = sortedAvailable.get(0);
+
+            availableTasks.remove(current);
             recommendedOrder.add(current);
 
             if (adjList.containsKey(current.id())) {
@@ -307,7 +312,7 @@ public class TaskService {
                     inDegree.put(dependentTask.id(), newDegree);
 
                     if (newDegree == 0) {
-                        queue.add(dependentTask);
+                        availableTasks.add(dependentTask);
                     }
                 }
             }
