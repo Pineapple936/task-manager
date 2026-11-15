@@ -213,7 +213,7 @@ public class TaskService {
     public List<TaskDto> getTopNPriorityTasks(Long userId, int n, TopNAlgorithm algorithmType) {
         List<TaskDto> tasks = taskRepository.findAllByUserId(userId);
 
-        if (tasks.isEmpty() || n <= 0) {
+        if (tasks.isEmpty()) {
             return List.of();
         }
 
