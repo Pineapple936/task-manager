@@ -217,13 +217,13 @@ public class TaskService {
 
         int limit = Math.min(n, tasks.size());
 
-        Comparator<TaskDto> priorityComparator = Comparator
+        Comparator<TaskDto> bstComparator = Comparator
             .comparing(TaskDto::priority, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(TaskDto::deadline, Comparator.nullsFirst(Comparator.reverseOrder()))
             .thenComparing(TaskDto::id, Comparator.nullsFirst(Comparator.reverseOrder()));
 
         if (algorithmType == TopNAlgorithm.BST) {
-            BinarySearchTree<TaskDto> bst = new BinarySearchTree<>(priorityComparator);
+            BinarySearchTree<TaskDto> bst = new BinarySearchTree<>(bstComparator);
             for (TaskDto task : tasks) {
                 bst.insert(task);
             }
@@ -239,8 +239,7 @@ public class TaskService {
             List<TaskDto> sortedTasks = taskSorter.sort(
                     tasks, 
                     sortAlgorithm, 
-                    TaskSortField.PRIORITY, 
-                    SortDirection.DESC
+                    bstComparator
             );
             return sortedTasks.subList(0, limit);
         }
@@ -249,17 +248,10 @@ public class TaskService {
     @Transactional(readOnly = true)
     public List<TaskDto> getRecommendedOrder(Long userId) {
         List<TaskDto> allTasks = taskRepository.findAllByUserId(userId);
-        if (allTasks.isEmpty()) {
-            return List.of();
-        }
 
         List<TaskDto> activeTasks = allTasks.stream()
             .filter(task -> task.status() != com.team.task_manager.jooq.generated.enums.TaskStatus.completed)
             .toList();
-        
-        if (activeTasks.isEmpty()) {
-            return List.of();
-        }
 
         Map<Long, Integer> inDegree = new HashMap<>();
         Map<Long, TaskDto> taskById = new HashMap<>();
@@ -270,6 +262,7 @@ public class TaskService {
         }
 
         Map<Long, List<TaskDto>> adjList = new HashMap<>();
+        int bannedTasks = 0;
         for (TaskDto task : activeTasks) {
             if (task.dependencies() != null) {
                 for (TaskDependencyDto dep : task.dependencies()) {
@@ -277,11 +270,11 @@ public class TaskService {
                         inDegree.put(task.id(), inDegree.get(task.id()) + 1);
                         adjList.computeIfAbsent(dep.id(), k -> new ArrayList<>()).add(task);
                     } else {
-                        boolean isCompleted = taskRepository.findById(dep.id())
-                                .map(t -> t.status() == TaskStatus.completed)
-                                .orElse(false);
-                        if (!isCompleted) {
-                            inDegree.put(task.id(), Integer.MAX_VALUE);
+                        if (dep.status() != TaskStatus.completed) {
+                            if (inDegree.get(task.id()) != Integer.MAX_VALUE) {
+                                inDegree.put(task.id(), Integer.MAX_VALUE);
+                                bannedTasks += 1;
+                            }
                         }
                     }
                 }
@@ -322,7 +315,7 @@ public class TaskService {
             }
         }
 
-        if (recommendedOrder.size() != activeTasks.size()) {
+        if (recommendedOrder.size() + bannedTasks != activeTasks.size()) {
             throw new TaskDependencyCycleException(null, null);
         }
         return recommendedOrder;
