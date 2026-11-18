@@ -221,6 +221,11 @@ public class TaskService {
 
         int limit = Math.min(n, tasks.size());
 
+        Comparator<TaskDto> sortComparator = Comparator
+            .comparing(TaskDto::priority, Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(TaskDto::deadline, Comparator.nullsLast(Comparator.naturalOrder()))
+            .thenComparing(TaskDto::id, Comparator.nullsLast(Comparator.naturalOrder()));
+
         Comparator<TaskDto> bstComparator = Comparator
             .comparing(TaskDto::priority, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(TaskDto::deadline, Comparator.nullsFirst(Comparator.reverseOrder()))
@@ -243,7 +248,7 @@ public class TaskService {
             List<TaskDto> sortedTasks = taskSorter.sort(
                     tasks, 
                     sortAlgorithm, 
-                    bstComparator
+                    sortComparator
             );
             return sortedTasks.subList(0, limit);
         }
