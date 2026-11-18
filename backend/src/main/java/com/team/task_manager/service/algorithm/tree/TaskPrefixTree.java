@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 public class TaskPrefixTree {
     private static class Node {
@@ -24,39 +25,39 @@ public class TaskPrefixTree {
     public void insert(TaskDto task) {
         if (task == null || task.name() == null) return;
 
-        String name = task.name().toLowerCase();
-        Node current = root;
+        String[] words = task.name().toLowerCase().split("\\s+");
 
-        for (char ch : name.toCharArray()) {
-            current.children.putIfAbsent(ch, new Node());
-            current = current.children.get(ch);
+        for (String word : words) {
+            if (word.isBlank()) continue;
+
+            Node current = root;
+            
+            for (char ch : word.toCharArray()) {
+                current.children.putIfAbsent(ch, new Node());
+                current = current.children.get(ch);
+            }
+    
+            current.isEndOfWord = true;
+            if (!current.tasks.contains(task)) {
+                current.tasks.add(task);
+            }
         }
-
-        current.isEndOfWord = true;
-        current.tasks.add(task);
     }
 
-    public List<TaskDto> search(String name) {
-        if (name == null) return List.of();
+    public List<TaskDto> search(String query) {
+        if (query == null || query.isBlank()) return List.of();
 
-        Node node = findNode(name.toLowerCase());
+        String firstWord = query.toLowerCase().split("\\s+")[0];
 
-        if (node != null && node.isEndOfWord) {
-            return node.tasks;
-        }
-        return List.of();
-    }
+        Node node = findNode(firstWord.toLowerCase());
 
-    public List<TaskDto> searchByPrefix(String prefix) {
-        if (prefix == null) return List.of();
-
-        Node node = findNode(prefix.toLowerCase());
         if (node == null) return List.of();
 
-        List<TaskDto> result = new ArrayList<>();
-        collectAllTasks(node, result);
+        Map<Long, TaskDto> results = new LinkedHashMap<>();
 
-        return result;
+        collectAllTasks(node, results);
+
+        return new ArrayList<>(results.values());
     }
 
     private Node findNode(String name) {
@@ -72,11 +73,13 @@ public class TaskPrefixTree {
         return current;
     }
 
-    private void collectAllTasks(Node node, List<TaskDto> result) {
+    private void collectAllTasks(Node node, Map<Long, TaskDto> result) {
         if (node == null) return;
 
         if (node.isEndOfWord) {
-            result.addAll(node.tasks);
+            for (TaskDto task : node.tasks) {
+                result.putIfAbsent(task.id(), task);
+            }
         }
 
         for (Node child : node.children.values()) {
