@@ -215,16 +215,12 @@ public class TaskService {
     public List<TaskDto> getTopNPriorityTasks(Long userId, int n, TopNAlgorithm algorithmType) {
         List<TaskDto> tasks = taskRepository.findAllByUserId(userId);
 
-        if (tasks.isEmpty()) {
-            return List.of();
-        }
-
         int limit = Math.min(n, tasks.size());
 
         Comparator<TaskDto> priorityComparator = Comparator
-            .comparing(TaskDto::priority, Comparator.nullsLast(Comparator.naturalOrder()))
-            .thenComparing(TaskDto::deadline, Comparator.nullsLast(Comparator.reverseOrder()))
-            .thenComparing(TaskDto::id, Comparator.nullsLast(Comparator.reverseOrder()));
+            .comparing(TaskDto::priority, Comparator.nullsFirst(Comparator.naturalOrder()))
+            .thenComparing(TaskDto::deadline, Comparator.nullsFirst(Comparator.reverseOrder()))
+            .thenComparing(TaskDto::id, Comparator.nullsFirst(Comparator.reverseOrder()));
 
         if (algorithmType == TopNAlgorithm.BST) {
             BinarySearchTree<TaskDto> bst = new BinarySearchTree<>(priorityComparator);
@@ -280,6 +276,13 @@ public class TaskService {
                     if (taskById.containsKey(dep.id())) {
                         inDegree.put(task.id(), inDegree.get(task.id()) + 1);
                         adjList.computeIfAbsent(dep.id(), k -> new ArrayList<>()).add(task);
+                    } else {
+                        boolean isCompleted = taskRepository.findById(dep.id())
+                                .map(t -> t.status() == TaskStatus.completed)
+                                .orElse(false);
+                        if (!isCompleted) {
+                            inDegree.put(task.id(), Integer.MAX_VALUE);
+                        }
                     }
                 }
             }
@@ -338,6 +341,6 @@ public class TaskService {
             prefixTree.insert(task);
         }
 
-        return prefixTree.searchByPrefix(name);
+        return prefixTree.search(name);
     }
 }
