@@ -47,9 +47,9 @@ public class TaskPrefixTree {
     public List<TaskDto> search(String query) {
         if (query == null || query.isBlank()) return List.of();
 
-        String firstWord = query.toLowerCase().split("\\s+")[0];
+        String firstWord = query.trim().toLowerCase().split("\\s+")[0];
 
-        Node node = findNode(firstWord.toLowerCase());
+        Node node = findNode(firstWord);
 
         if (node == null) return List.of();
 
