@@ -1,13 +1,17 @@
 package com.team.task_manager.service.task;
 
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.List;
+import java.util.Queue;
+import java.util.LinkedList;
 
 import com.team.task_manager.controller.error.exception.task.TaskCompletionBlockedException;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
@@ -248,34 +252,50 @@ public class TaskService {
     @Transactional(readOnly = true)
     public List<TaskDto> getRecommendedOrder(Long userId) {
         List<TaskDto> allTasks = taskRepository.findAllByUserId(userId);
-
         List<TaskDto> activeTasks = allTasks.stream()
             .filter(task -> task.status() != com.team.task_manager.jooq.generated.enums.TaskStatus.completed)
             .toList();
-
-        Map<Long, Integer> inDegree = new HashMap<>();
+            
         Map<Long, TaskDto> taskById = new HashMap<>();
-
         for (TaskDto task : activeTasks) {
             taskById.put(task.id(), task);
-            inDegree.put(task.id(), 0);
         }
-
+        
+        
+        
         Map<Long, List<TaskDto>> adjList = new HashMap<>();
-        int bannedTasks = 0;
+        Set<Long> blockedTasks = new HashSet<>();
+        
         for (TaskDto task : activeTasks) {
             if (task.dependencies() != null) {
                 for (TaskDependencyDto dep : task.dependencies()) {
-                    if (taskById.containsKey(dep.id())) {
+                    adjList.computeIfAbsent(dep.id(), k -> new ArrayList<>()).add(task);
+                    if (!taskById.containsKey(dep.id()) && dep.status() != TaskStatus.completed) {
+                        blockedTasks.add(task.id());
+                    }
+                }
+            }
+        }
+
+        Queue<Long> blockQueue = new LinkedList<>(blockedTasks);
+        while (!blockQueue.isEmpty()) {
+            Long blockedId = blockQueue.poll();
+            if (adjList.containsKey(blockedId)) {
+                for (TaskDto dependent : adjList.get(blockedId)) {
+                    if (blockedTasks.add(dependent.id())) {
+                        blockQueue.add(dependent.id());
+                    }
+                }
+            }
+        }
+
+        Map<Long, Integer> inDegree = new HashMap<>();
+        for (TaskDto task : activeTasks) {
+            if (blockedTasks.contains(task.id())) continue;
+            if (task.dependencies() != null) {
+                for (TaskDependencyDto dep : task.dependencies()) {
+                    if (!blockedTasks.contains(dep.id()) && taskById.containsKey(dep.id())) {
                         inDegree.put(task.id(), inDegree.get(task.id()) + 1);
-                        adjList.computeIfAbsent(dep.id(), k -> new ArrayList<>()).add(task);
-                    } else {
-                        if (dep.status() != TaskStatus.completed) {
-                            if (inDegree.get(task.id()) != Integer.MAX_VALUE) {
-                                inDegree.put(task.id(), Integer.MAX_VALUE);
-                                bannedTasks += 1;
-                            }
-                        }
                     }
                 }
             }
@@ -305,6 +325,8 @@ public class TaskService {
 
             if (adjList.containsKey(current.id())) {
                 for (TaskDto dependentTask : adjList.get(current.id())) {
+                    if (blockedTasks.contains(dependentTask.id())) continue;
+
                     int newDegree = inDegree.get(dependentTask.id()) - 1;
                     inDegree.put(dependentTask.id(), newDegree);
 
@@ -315,7 +337,7 @@ public class TaskService {
             }
         }
 
-        if (recommendedOrder.size() + bannedTasks != activeTasks.size()) {
+        if (recommendedOrder.size() + blockedTasks.size() < activeTasks.size()) {
             throw new TaskDependencyCycleException(null, null);
         }
         return recommendedOrder;
