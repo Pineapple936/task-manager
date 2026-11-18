@@ -47,17 +47,31 @@ public class TaskPrefixTree {
     public List<TaskDto> search(String query) {
         if (query == null || query.isBlank()) return List.of();
 
-        String firstWord = query.trim().toLowerCase().split("\\s+")[0];
+        String[] words = query.trim().toLowerCase().split("\\s+");
 
-        Node node = findNode(firstWord);
+        Map<Long, TaskDto> intersection = null;
 
-        if (node == null) return List.of();
+        for (String word : words) {
+            if (word.isBlank()) continue;
 
-        Map<Long, TaskDto> results = new LinkedHashMap<>();
+            Node node = findNode(word);
+            if (node == null) return List.of();
+            
+            Map<Long, TaskDto> wordTasks = new LinkedHashMap<>();
+            collectAllTasks(node, wordTasks);
+    
+            if (intersection == null) {
+                intersection = wordTasks;
+            } else {
+                intersection.keySet().retainAll(wordTasks.keySet());
+            }
+    
+            if (intersection.isEmpty()) return List.of();
+        }
 
-        collectAllTasks(node, results);
+        if (intersection == null) return List.of();
 
-        return new ArrayList<>(results.values());
+        return new ArrayList<>(intersection.values());
     }
 
     private Node findNode(String name) {
