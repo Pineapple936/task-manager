@@ -296,6 +296,13 @@ public class TaskService {
 
         Map<Long, Integer> inDegree = new HashMap<>();
         for (TaskDto task : activeTasks) {
+            if (!blockedTasks.contains(task.id())) {
+                inDegree.put(task.id(), 0);
+            }
+        }
+
+
+        for (TaskDto task : activeTasks) {
             if (blockedTasks.contains(task.id())) continue;
             if (task.dependencies() != null) {
                 for (TaskDependencyDto dep : task.dependencies()) {
@@ -310,6 +317,7 @@ public class TaskService {
         List<TaskDto> recommendedOrder = new ArrayList<>();
 
         for (TaskDto task : activeTasks) {
+            if (blockedTasks.contains(task.id())) continue;
             if (inDegree.get(task.id()) == 0) {
                 availableTasks.add(task);
             }
