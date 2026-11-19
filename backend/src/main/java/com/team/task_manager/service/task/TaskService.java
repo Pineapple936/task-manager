@@ -1,24 +1,42 @@
 package com.team.task_manager.service.task;
 
+import java.util.Map;
+import java.util.Set;
 import java.util.List;
+import java.util.Queue;
+import java.util.LinkedList;
 
 import com.team.task_manager.controller.error.exception.task.TaskCompletionBlockedException;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+
+import com.team.task_manager.controller.error.exception.task.TaskAccessDeniedException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyAlreadyExistsException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyCycleException;
 import com.team.task_manager.controller.error.exception.task.TaskDependencyNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskNotFoundException;
 import com.team.task_manager.controller.error.exception.task.TaskSelfDependencyException;
 import com.team.task_manager.controller.error.exception.tag.TaskTagAlreadyExistsException;
+import com.team.task_manager.controller.error.exception.sort.UnsupportedSortAlgorithmException;
+import com.team.task_manager.jooq.generated.enums.TaskMemberRole;
 import com.team.task_manager.repository.task.TaskRepository;
 import com.team.task_manager.jooq.generated.enums.TaskStatus;
 import com.team.task_manager.repository.task.entity.TaskDto;
 import com.team.task_manager.repository.task.entity.TaskUpdateDto;
+import com.team.task_manager.repository.task.entity.TaskDependencyDto;
 import com.team.task_manager.service.algorithm.graph.AdjacencyMatrixGraph;
+import com.team.task_manager.service.algorithm.tree.BinarySearchTree;
+import com.team.task_manager.service.algorithm.tree.TaskPrefixTree;
 import com.team.task_manager.service.task.entity.filter.TaskFilterCriteria;
 import com.team.task_manager.service.task.entity.sort.SortAlgorithm;
 import com.team.task_manager.service.task.entity.sort.SortDirection;
 import com.team.task_manager.service.task.entity.sort.TaskSortField;
+import com.team.task_manager.service.task.entity.sort.TopNAlgorithm;
 import com.team.task_manager.service.tag.TagService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -206,4 +224,160 @@ public class TaskService {
         return task;
     }
 
+    @Transactional(readOnly = true)
+    public List<TaskDto> getTopNPriorityTasks(Long userId, int n, TopNAlgorithm algorithmType) {
+        List<TaskDto> tasks = taskRepository.findAllByUserId(userId);
+
+        int limit = Math.min(n, tasks.size());
+
+        Comparator<TaskDto> sortComparator = Comparator
+            .comparing(TaskDto::priority, Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(TaskDto::deadline, Comparator.nullsLast(Comparator.naturalOrder()))
+            .thenComparing(TaskDto::id, Comparator.nullsLast(Comparator.naturalOrder()));
+
+        Comparator<TaskDto> bstComparator = Comparator
+            .comparing(TaskDto::priority, Comparator.nullsFirst(Comparator.naturalOrder()))
+            .thenComparing(TaskDto::deadline, Comparator.nullsFirst(Comparator.reverseOrder()))
+            .thenComparing(TaskDto::id, Comparator.nullsFirst(Comparator.reverseOrder()));
+
+        if (algorithmType == TopNAlgorithm.BST) {
+            BinarySearchTree<TaskDto> bst = new BinarySearchTree<>(bstComparator);
+            for (TaskDto task : tasks) {
+                bst.insert(task);
+            }
+            return bst.getTopN(limit);
+        } else {
+            SortAlgorithm sortAlgorithm = switch (algorithmType) {
+                case QUICK -> SortAlgorithm.QUICK;
+                case MERGE -> SortAlgorithm.MERGE;
+                case INSERTION -> SortAlgorithm.INSERTION;
+                default -> throw new UnsupportedSortAlgorithmException(algorithmType.name());
+            };
+
+            List<TaskDto> sortedTasks = taskSorter.sort(
+                    tasks, 
+                    sortAlgorithm, 
+                    sortComparator
+            );
+            return sortedTasks.subList(0, limit);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<TaskDto> getRecommendedOrder(Long userId) {
+        List<TaskDto> allTasks = taskRepository.findAllByUserId(userId);
+        List<TaskDto> activeTasks = allTasks.stream()
+            .filter(task -> task.status() != com.team.task_manager.jooq.generated.enums.TaskStatus.completed)
+            .toList();
+            
+        Map<Long, TaskDto> taskById = new HashMap<>();
+        for (TaskDto task : activeTasks) {
+            taskById.put(task.id(), task);
+        }
+        
+        
+        
+        Map<Long, List<TaskDto>> adjList = new HashMap<>();
+        Set<Long> blockedTasks = new HashSet<>();
+        
+        for (TaskDto task : activeTasks) {
+            if (task.dependencies() != null) {
+                for (TaskDependencyDto dep : task.dependencies()) {
+                    adjList.computeIfAbsent(dep.id(), k -> new ArrayList<>()).add(task);
+                    if (!taskById.containsKey(dep.id()) && dep.status() != TaskStatus.completed) {
+                        blockedTasks.add(task.id());
+                    }
+                }
+            }
+        }
+
+        Queue<Long> blockQueue = new LinkedList<>(blockedTasks);
+        while (!blockQueue.isEmpty()) {
+            Long blockedId = blockQueue.poll();
+            if (adjList.containsKey(blockedId)) {
+                for (TaskDto dependent : adjList.get(blockedId)) {
+                    if (blockedTasks.add(dependent.id())) {
+                        blockQueue.add(dependent.id());
+                    }
+                }
+            }
+        }
+
+        Map<Long, Integer> inDegree = new HashMap<>();
+        for (TaskDto task : activeTasks) {
+            if (!blockedTasks.contains(task.id())) {
+                inDegree.put(task.id(), 0);
+            }
+        }
+
+
+        for (TaskDto task : activeTasks) {
+            if (blockedTasks.contains(task.id())) continue;
+            if (task.dependencies() != null) {
+                for (TaskDependencyDto dep : task.dependencies()) {
+                    if (!blockedTasks.contains(dep.id()) && taskById.containsKey(dep.id())) {
+                        inDegree.put(task.id(), inDegree.get(task.id()) + 1);
+                    }
+                }
+            }
+        }
+
+        List<TaskDto> availableTasks = new ArrayList<>();
+        List<TaskDto> recommendedOrder = new ArrayList<>();
+
+        for (TaskDto task : activeTasks) {
+            if (blockedTasks.contains(task.id())) continue;
+            if (inDegree.get(task.id()) == 0) {
+                availableTasks.add(task);
+            }
+        }
+
+        while (!availableTasks.isEmpty()) {
+            List<TaskDto> sortedAvailable = taskSorter.sort(
+                    availableTasks, 
+                    SortAlgorithm.QUICK, 
+                    TaskSortField.PRIORITY, 
+                    SortDirection.DESC
+            );
+            
+            TaskDto current = sortedAvailable.get(0);
+
+            availableTasks.remove(current);
+            recommendedOrder.add(current);
+
+            if (adjList.containsKey(current.id())) {
+                for (TaskDto dependentTask : adjList.get(current.id())) {
+                    if (blockedTasks.contains(dependentTask.id())) continue;
+
+                    int newDegree = inDegree.get(dependentTask.id()) - 1;
+                    inDegree.put(dependentTask.id(), newDegree);
+
+                    if (newDegree == 0) {
+                        availableTasks.add(dependentTask);
+                    }
+                }
+            }
+        }
+
+        if (recommendedOrder.size() + blockedTasks.size() < activeTasks.size()) {
+            throw new TaskDependencyCycleException(null, null);
+        }
+        return recommendedOrder;
+    }
+
+    @Transactional(readOnly = true)
+    public List<TaskDto> searchTasksByName(Long userId, String name) {
+        if (name == null || name.isBlank()) {
+            return List.of();
+        }
+
+        TaskPrefixTree prefixTree = new TaskPrefixTree();
+
+        List<TaskDto> tasks = taskRepository.findAllByUserId(userId);
+        for (TaskDto task : tasks) {
+            prefixTree.insert(task);
+        }
+
+        return prefixTree.search(name);
+    }
 }

@@ -23,10 +23,22 @@ public class TaskSorter {
     private final Sorter<TaskDto> mergeSorter = new MergeSorter<>();
 
     public List<TaskDto> sort(
+        List<TaskDto> tasks,
+        SortAlgorithm algorithm,
+        TaskSortField field,
+        SortDirection direction
+    ) {
+        Comparator<TaskDto> comparator = createComparator(field, direction);
+        return sort(tasks, algorithm, comparator);
+    }
+
+
+
+
+    public List<TaskDto> sort(
             List<TaskDto> tasks,
             SortAlgorithm algorithm,
-            TaskSortField field,
-            SortDirection direction
+            Comparator<TaskDto> comparator
     ) {
         if (tasks == null) {
             throw new EmptyTaskListException();
@@ -34,8 +46,6 @@ public class TaskSorter {
         if (tasks.isEmpty()) {
             return tasks;
         }
-
-        Comparator<TaskDto> comparator = createComparator(field, direction);
 
         switch (algorithm) {
             case QUICK:
@@ -50,26 +60,37 @@ public class TaskSorter {
     }
 
     private Comparator<TaskDto> createComparator(TaskSortField field, SortDirection direction) {
-        Comparator<TaskDto> comparator;
-        switch (field) {
-            case NAME:
-                comparator = Comparator.comparing(TaskDto::name, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-                break;
-            case PRIORITY:
-                comparator = Comparator.comparing(TaskDto::priority, Comparator.nullsLast(Comparator.naturalOrder()));
-                break;
-            case DEADLINE:
-                comparator = Comparator.comparing(TaskDto::deadline, Comparator.nullsLast(Comparator.naturalOrder()));
-                break;
-            default:
-                throw new IllegalArgumentException("Неизвестное поле: " + field);
-        }
+        return switch (field) {
+            case NAME -> {
+                Comparator<String> nameOrder = String.CASE_INSENSITIVE_ORDER;
+                if (direction == SortDirection.DESC) {
+                    nameOrder = nameOrder.reversed();
+                }
+                
+                yield Comparator.comparing(TaskDto::name, Comparator.nullsLast(nameOrder));
+            }
+            case PRIORITY -> {
+                Comparator<Integer> priorityOrder = (direction == SortDirection.DESC)
+                        ? Comparator.reverseOrder()
+                        : Comparator.naturalOrder();
+                
 
-        if (direction == SortDirection.DESC) {
-            comparator = comparator.reversed();
-        }
-
-        return comparator;
+                Comparator<java.time.OffsetDateTime> deadlineOrder = (direction == SortDirection.DESC)
+                        ? Comparator.naturalOrder()
+                        : Comparator.reverseOrder();
+                
+                yield Comparator.comparing(TaskDto::priority, Comparator.nullsLast(priorityOrder))
+                        .thenComparing(TaskDto::deadline, Comparator.nullsLast(deadlineOrder))
+                        .thenComparing(TaskDto::id, Comparator.nullsLast(Comparator.naturalOrder()));
+            }
+            case DEADLINE -> {
+                Comparator<java.time.OffsetDateTime> deadlineOrder = (direction == SortDirection.DESC)
+                        ? Comparator.reverseOrder()
+                        : Comparator.naturalOrder();
+                
+                yield Comparator.comparing(TaskDto::deadline, Comparator.nullsLast(deadlineOrder));
+            }
+            default -> throw new IllegalArgumentException("Неизвестное поле: " + field);
+        };
     }
-
 }
