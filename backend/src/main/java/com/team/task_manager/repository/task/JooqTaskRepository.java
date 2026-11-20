@@ -8,6 +8,7 @@ import com.team.task_manager.repository.tag.entity.TagDto;
 import com.team.task_manager.jooq.generated.tables.records.TasksRecord;
 import com.team.task_manager.repository.task.entity.TaskDependencyDto;
 import com.team.task_manager.repository.task.entity.TaskDto;
+import com.team.task_manager.repository.task.entity.TaskUpdateDto;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
@@ -168,23 +169,31 @@ public class JooqTaskRepository implements TaskRepository {
     }
 
     @Override
-    public Optional<TaskDto> update(TaskDto task) {
-        return Optional.ofNullable(
-                        dsl.update(TASKS)
-                                .set(TASKS.NAME, task.name())
-                                .set(TASKS.DESCRIPTION, task.description())
-                                .set(TASKS.PRIORITY, task.priority())
-                                .set(TASKS.STATUS, task.status())
-                                .set(TASKS.DEADLINE, task.deadline())
-                                .set(TASKS.UPDATED_AT, currentOffsetDateTime())
-                                .where(TASKS.ID.eq(task.id()))
-                                .returning()
-                                .fetchOne()
-                )
-                .map(JooqTaskRepository::toDto)
-                .map(updatedTask -> updatedTask
-                        .withDependencies(task.dependencies())
-                        .withTags(task.tags()));
+    public Optional<TaskDto> update(Long taskId, TaskUpdateDto update) {
+        var query = dsl.update(TASKS)
+                .set(TASKS.UPDATED_AT, currentOffsetDateTime());
+
+        if (update.name() != null) {
+            query.set(TASKS.NAME, update.name());
+        }
+        if (update.description() != null) {
+            query.set(TASKS.DESCRIPTION, update.description());
+        }
+        if (update.priority() != null) {
+            query.set(TASKS.PRIORITY, update.priority());
+        }
+        if (update.status() != null) {
+            query.set(TASKS.STATUS, update.status());
+        }
+        if (update.deadlineSpecified()) {
+            query.set(TASKS.DEADLINE, update.deadline());
+        }
+
+        return Optional.ofNullable(query
+                        .where(TASKS.ID.eq(taskId))
+                        .returning()
+                        .fetchOne())
+                .map(JooqTaskRepository::toDto);
     }
 
     @Override

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.team.task_manager.repository.task.entity.TaskDto;
+import com.team.task_manager.repository.task.entity.TaskUpdateDto;
 
 public interface TaskRepository {
     List<TaskDto> findAllByUserId(Long userId);
@@ -34,7 +35,7 @@ public interface TaskRepository {
 
     void deleteTag(Long taskId, Long tagId);
 
-    Optional<TaskDto> update(TaskDto task);
+    Optional<TaskDto> update(Long taskId, TaskUpdateDto update);
 
     void deleteById(Long taskId);
 }

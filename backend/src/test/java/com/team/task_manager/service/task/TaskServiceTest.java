@@ -35,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -187,7 +188,7 @@ class TaskServiceTest {
         repository.updatedTask = Optional.of(task);
         TaskService service = service(repository);
 
-        assertSame(task, service.update(TASK_ID, update(), USER_ID));
+        assertEquals(task, service.update(TASK_ID, update(), USER_ID));
         assertEquals("Task", repository.taskToUpdate.name());
     }
 
@@ -221,14 +222,14 @@ class TaskServiceTest {
         repository.memberRole = Optional.of(TaskMemberRole.editor);
         repository.updatedTask = Optional.of(task);
 
-        service(repository).update(
+        TaskDto result = service(repository).update(
                 TASK_ID,
                 new TaskUpdateDto(null, null, null, TaskStatus.completed, null, false),
                 USER_ID
         );
 
         assertEquals(TaskStatus.completed, repository.taskToUpdate.status());
-        assertEquals(task.dependencies(), repository.taskToUpdate.dependencies());
+        assertEquals(task.dependencies(), result.dependencies());
     }
 
     @Test
@@ -266,12 +267,12 @@ class TaskServiceTest {
             );
 
             assertEquals("Changed name", repository.taskToUpdate.name());
-            assertEquals(status == null ? task.status() : status, repository.taskToUpdate.status());
+            assertEquals(status, repository.taskToUpdate.status());
         }
     }
 
     @Test
-    void preservesUnspecifiedFieldsAndClearsDeadline() {
+    void passesOnlySpecifiedFieldsAndExplicitNullDeadline() {
         RecordingTaskRepository repository = new RecordingTaskRepository();
         TaskDto existingTask = new TaskDto(
                 TASK_ID,
@@ -296,8 +297,11 @@ class TaskServiceTest {
         );
 
         assertEquals("Changed", repository.taskToUpdate.name());
-        assertEquals("Description", repository.taskToUpdate.description());
+        assertNull(repository.taskToUpdate.description());
+        assertNull(repository.taskToUpdate.priority());
+        assertNull(repository.taskToUpdate.status());
         assertNull(repository.taskToUpdate.deadline());
+        assertTrue(repository.taskToUpdate.deadlineSpecified());
     }
 
     @Test
@@ -630,7 +634,7 @@ class TaskServiceTest {
         private TaskDto createdTask;
         private Optional<TaskDto> updatedTask = Optional.empty();
         private TaskDto taskToCreate;
-        private TaskDto taskToUpdate;
+        private TaskUpdateDto taskToUpdate;
         private Long ownerTaskId;
         private Long ownerUserId;
         private Long deletedTaskId;
@@ -731,8 +735,9 @@ class TaskServiceTest {
         }
 
         @Override
-        public Optional<TaskDto> update(TaskDto task) {
-            taskToUpdate = task;
+        public Optional<TaskDto> update(Long taskId, TaskUpdateDto update) {
+            assertEquals(TASK_ID, taskId);
+            taskToUpdate = update;
             return updatedTask;
         }
 

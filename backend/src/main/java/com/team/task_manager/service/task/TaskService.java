@@ -123,21 +123,10 @@ public class TaskService {
             throw new TaskCompletionBlockedException(taskId);
         }
 
-        TaskDto updatedTask = new TaskDto(
-                task.id(),
-                task.createdByUserId(),
-                update.name() != null ? update.name() : task.name(),
-                update.description() != null ? update.description() : task.description(),
-                update.priority() != null ? update.priority() : task.priority(),
-                update.status() != null ? update.status() : task.status(),
-                update.deadlineSpecified() ? update.deadline() : task.deadline(),
-                task.createdAt(),
-                task.updatedAt(),
-                task.dependencies(),
-                task.tags()
-        );
-
-        return taskRepository.update(updatedTask)
+        return taskRepository.update(taskId, update)
+                .map(updatedTask -> updatedTask
+                        .withDependencies(task.dependencies())
+                        .withTags(task.tags()))
                 .orElseThrow(() -> new TaskNotFoundException(taskId));
     }
 
