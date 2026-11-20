@@ -134,6 +134,107 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /tasks/top-priority:
+    get:
+      summary: Получить N задач с высшими приоритетами
+      description: |
+        Учитываются все доступные пользователю задачи, включая выполненные и заблокированные зависимостями.
+        Порядок: приоритет по убыванию, дедлайн по возрастанию (без дедлайна — в конце), ID по возрастанию.
+        Если N больше количества задач, возвращаются все доступные задачи. При отсутствии задач возвращается [].
+        BST использует собственное AVL-дерево, остальные варианты — полную сортировку.
+      operationId: getTopNPriorityTasks
+      parameters:
+        - name: n
+          in: query
+          required: false
+          description: Максимальное количество задач
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 5
+        - name: algorithm
+          in: query
+          required: false
+          description: Алгоритм получения Top N
+          schema:
+            type: string
+            enum: [BST, QUICK, MERGE, INSERTION]
+            default: BST
+      responses:
+        '200':
+          description: Задачи в порядке приоритета
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskListItem'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /tasks/recommended:
+    get:
+      summary: Получить рекомендованный порядок выполнения задач
+      description: |
+        Возвращает план выполнения доступных пользователю незавершённых задач.
+        Зависимости располагаются раньше зависящих от них задач; выполненные зависимости уже считаются удовлетворёнными.
+        Среди задач, которые можно добавить в план, сначала выбирается задача с большим приоритетом,
+        затем с более ранним дедлайном (без дедлайна — в конце), затем с меньшим ID.
+        Задачи с недоступными пользователю невыполненными зависимостями и все зависящие от них задачи исключаются.
+        Положение в плане не означает возможность немедленно завершить задачу: её зависимости должны быть выполнены.
+        При отсутствии подходящих задач возвращается []. Статусы задач не изменяются.
+      operationId: getRecommendedTasks
+      responses:
+        '200':
+          description: Задачи в рекомендованном порядке выполнения
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskListItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Обнаружен цикл в части графа незавершённых задач, участвующей в построении плана (TASK_DEPENDENCY_CYCLE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /tasks/search:
+    get:
+      summary: Найти задачи по словам названия
+      description: |
+        Поиск среди доступных пользователю задач через префиксное дерево без учёта регистра.
+        Каждое слово запроса должно совпадать с началом какого-либо слова в названии; порядок слов свободный.
+        Например, запрос «подг отч» найдёт задачу «Подготовить отчёт».
+        Пробелы по краям запроса игнорируются; слова разделяются пробельными символами.
+        Пустой запрос или отсутствие совпадений возвращает []. Задачи не дублируются, порядок не гарантируется.
+      operationId: searchTasks
+      parameters:
+        - name: name
+          in: query
+          required: true
+          allowEmptyValue: true
+          description: Слова или начала слов названия задачи
+          schema:
+            type: string
+          example: подг отч
+      responses:
+        '200':
+          description: Найденные задачи
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskListItem'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /tasks/import:
     post:
       summary: Импортировать задачи из CSV или JSON
@@ -850,7 +951,9 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
           maxLength: 255
+          description: Название не должно быть пустым или состоять только из пробельных символов
           example: Подготовить итоговый отчёт
         description:
           type: string

@@ -41,7 +41,21 @@ class UpdateTaskRequestTest {
         }
 
         assertTrue(violations.stream()
-                .anyMatch(violation -> violation.getMessage().equals("Название не может быть null")));
+                .anyMatch(violation -> violation.getMessage().equals("Название не должно быть пустым")));
+    }
+
+    @Test
+    void rejectsEmptyAndWhitespaceNamesButAllowsMissingName() throws Exception {
+        try (var validatorFactory = Validation.buildDefaultValidatorFactory()) {
+            var validator = validatorFactory.getValidator();
+            for (String name : new String[]{"", "   "}) {
+                UpdateTaskRequest request = objectMapper.readValue(
+                        "{\"name\":\"" + name + "\"}", UpdateTaskRequest.class);
+                assertTrue(validator.validate(request).stream()
+                        .anyMatch(violation -> violation.getPropertyPath().toString().equals("name")));
+            }
+            assertTrue(validator.validate(objectMapper.readValue("{}", UpdateTaskRequest.class)).isEmpty());
+        }
     }
 
     @Test

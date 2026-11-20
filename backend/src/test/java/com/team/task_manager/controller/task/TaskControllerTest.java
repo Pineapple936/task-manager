@@ -69,6 +69,21 @@ class TaskControllerTest {
     }
 
     @Test
+    void rejectsMalformedAndMissingRequestParametersWithoutCallingService() throws Exception {
+        for (String url : new String[]{
+                "/tasks?priority=abc", "/tasks?status=unknown", "/tasks?deadlineFrom=xxx",
+                "/tasks/abc", "/tasks/search", "/tasks/top-priority?n=abc",
+                "/tasks/top-priority?algorithm=unknown"
+        }) {
+            mockMvc.perform(get(url))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+        }
+        verifyNoInteractions(taskService);
+    }
+
+    @Test
     void returnsConflictWhenTaskDependenciesAreIncomplete() throws Exception {
         when(taskService.update(eq(20L), any(), eq(USER_ID)))
                 .thenThrow(new TaskCompletionBlockedException(20L));
