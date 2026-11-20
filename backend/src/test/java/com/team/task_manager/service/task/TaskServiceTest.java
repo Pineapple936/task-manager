@@ -2,6 +2,8 @@ package com.team.task_manager.service.task;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 
@@ -367,6 +369,35 @@ class TaskServiceTest {
     }
 
     @Test
+    void rejectsDependencyWhenUserCannotAccessDependencyTask() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRoles.put(TASK_ID, TaskMemberRole.editor);
+        TaskService service = service(repository);
+
+        assertThrows(
+                TaskAccessDeniedException.class,
+                () -> service.addDependency(TASK_ID, 30L, USER_ID)
+        );
+
+        assertNull(repository.addedDependencyTaskId);
+    }
+
+    @Test
+    void allowsDependencyWhenUserCanOnlyViewDependencyTask() {
+        RecordingTaskRepository repository = new RecordingTaskRepository();
+        repository.task = Optional.of(task(TASK_ID, USER_ID));
+        repository.memberRoles.put(TASK_ID, TaskMemberRole.editor);
+        repository.memberRoles.put(30L, TaskMemberRole.viewer);
+        TaskService service = service(repository);
+
+        service.addDependency(TASK_ID, 30L, USER_ID);
+
+        assertEquals(TASK_ID, repository.dependencyTaskId);
+        assertEquals(30L, repository.addedDependencyTaskId);
+    }
+
+    @Test
     void rejectsDependencyOnSameTask() {
         TaskService service = service(new RecordingTaskRepository());
 
@@ -595,6 +626,7 @@ class TaskServiceTest {
         private List<TaskDto> tasks = List.of();
         private Optional<TaskDto> task = Optional.empty();
         private Optional<TaskMemberRole> memberRole = Optional.empty();
+        private final Map<Long, TaskMemberRole> memberRoles = new HashMap<>();
         private TaskDto createdTask;
         private Optional<TaskDto> updatedTask = Optional.empty();
         private TaskDto taskToCreate;
@@ -759,8 +791,10 @@ class TaskServiceTest {
         }
 
         private TaskMemberRole role(Long taskId) {
-            return taskRepository.memberRole
-                    .orElseThrow(() -> new TaskAccessDeniedException(taskId));
+            Optional<TaskMemberRole> role = taskRepository.memberRoles.isEmpty()
+                    ? taskRepository.memberRole
+                    : Optional.ofNullable(taskRepository.memberRoles.get(taskId));
+            return role.orElseThrow(() -> new TaskAccessDeniedException(taskId));
         }
     }
 }

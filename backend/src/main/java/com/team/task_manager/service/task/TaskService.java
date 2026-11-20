@@ -171,6 +171,7 @@ public class TaskService {
         requireTaskEditor(taskId, userId);
         taskRepository.findById(dependencyTaskId)
                 .orElseThrow(() -> new TaskNotFoundException(dependencyTaskId));
+        taskMemberService.requireAccess(dependencyTaskId, userId);
 
         if (taskRepository.dependencyExists(taskId, dependencyTaskId)) {
             throw new TaskDependencyAlreadyExistsException(taskId, dependencyTaskId);

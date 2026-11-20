@@ -372,7 +372,8 @@ paths:
       summary: Добавить зависимость задачи
       description: >-
         Задача `taskId` будет зависеть от задачи `dependencyTaskId`. Операция доступна
-        владельцу и редактору задачи `taskId`.
+        владельцу и редактору задачи `taskId`. Пользователь также должен быть
+        участником задачи `dependencyTaskId` с любой ролью, включая viewer.
       operationId: addTaskDependency
       responses:
         '204':
